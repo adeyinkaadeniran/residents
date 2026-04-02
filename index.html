@@ -1,0 +1,1820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PHC Resident Doctors — Activity Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+:root{
+  --bg:#F6F4EF;--surf:#FFFFFF;--surf2:#EDEAE3;--bdr:#D9D5CC;--blt:#EAE7E0;
+  --tx:#1C1A17;--tx2:#5C594F;--tx3:#A09C92;
+  --gn:#14532D;--gm:#166534;--gl:#DCFCE7;--gll:#F0FDF4;
+  --bl:#1E3A8A;--bll:#DBEAFE;
+  --am:#78350F;--aml:#FEF3C7;
+  --rd:#991B1B;--rdl:#FEE2E2;
+  --pu:#4C1D95;--pul:#EDE9FE;
+  --tl:#134E4A;--tll:#CCFBF1;
+  --ro:#881337;--rol:#FFE4E6;
+  --sl:#1E293B;--sll:#F1F5F9;
+  --r:10px;--rl:16px;
+  --sh:0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.04);
+  --shm:0 4px 16px rgba(0,0,0,.09),0 2px 6px rgba(0,0,0,.04);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;font-size:14px;}
+.app{display:grid;grid-template-columns:250px 1fr;min-height:100vh;}
+/* SIDEBAR */
+.sb{background:var(--sl);color:#fff;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow:hidden;}
+.sb-logo{padding:22px 20px 16px;border-bottom:1px solid rgba(255,255,255,.08);}
+.sb-logo .tag{font-size:9px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.38);margin-bottom:5px;}
+.sb-logo h1{font-family:'Lora',serif;font-size:14px;font-weight:600;color:#fff;line-height:1.45;}
+.sb-logo .dep{font-size:10.5px;color:rgba(255,255,255,.42);margin-top:3px;font-style:italic;}
+.sb-nav{padding:10px 10px;flex:1;overflow-y:auto;}
+.sb-sec{font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:rgba(255,255,255,.28);padding:13px 10px 4px;font-weight:600;}
+.ni{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px;color:rgba(255,255,255,.62);transition:all .15s;margin-bottom:1px;user-select:none;}
+.ni:hover{background:rgba(255,255,255,.07);color:#fff;}
+.ni.on{background:rgba(255,255,255,.13);color:#fff;font-weight:500;}
+.ni svg{width:15px;height:15px;flex-shrink:0;opacity:.72;}
+.ni.on svg{opacity:1;}
+.sb-foot{padding:13px 20px;border-top:1px solid rgba(255,255,255,.08);font-size:10px;color:rgba(255,255,255,.28);line-height:1.7;}
+/* MAIN */
+.main{display:flex;flex-direction:column;min-height:100vh;overflow-x:hidden;}
+.topbar{background:var(--surf);border-bottom:1px solid var(--blt);padding:12px 26px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:20;}
+.tb-l h2{font-size:15px;font-weight:600;}
+.tb-l p{font-size:11.5px;color:var(--tx3);margin-top:1px;}
+.tb-r{display:flex;gap:8px;align-items:center;}
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:8px;font-size:12.5px;font-weight:500;cursor:pointer;border:none;font-family:inherit;transition:all .14s;white-space:nowrap;}
+.btn-p{background:var(--gm);color:#fff;}.btn-p:hover{background:var(--gn);}
+.btn-s{background:var(--surf2);color:var(--tx);border:1px solid var(--bdr);}.btn-s:hover{background:var(--blt);}
+.btn-d{background:var(--rdl);color:var(--rd);}.btn-d:hover{background:#FECACA;}
+.btn-sm{padding:5px 10px;font-size:12px;}
+.btn-ic{padding:6px;border-radius:6px;}
+/* CONTENT */
+.cnt{padding:22px 26px;flex:1;}
+.pg{display:none;}.pg.on{display:block;}
+/* METRICS */
+.mrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:22px;}
+.mc{background:var(--surf);border:1px solid var(--blt);border-radius:var(--rl);padding:15px 17px;}
+.mc-lb{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);margin-bottom:7px;}
+.mc-v{font-size:25px;font-weight:600;color:var(--tx);line-height:1;}
+.mc-s{font-size:11px;color:var(--tx3);margin-top:4px;}
+.mc.dk{background:var(--sl);border-color:var(--sl);}
+.mc.dk .mc-lb,.mc.dk .mc-s{color:rgba(255,255,255,.48);}
+.mc.dk .mc-v{color:#fff;}
+/* FILTER BAR */
+.fb{display:flex;align-items:center;gap:9px;margin-bottom:16px;flex-wrap:wrap;}
+.fb label{font-size:12px;font-weight:500;color:var(--tx2);}
+select,input[type=text],input[type=date],input[type=number],textarea{font-family:inherit;font-size:13px;padding:7px 11px;border:1px solid var(--bdr);border-radius:8px;background:var(--surf);color:var(--tx);outline:none;transition:border .14s,box-shadow .14s;}
+select:focus,input:focus,textarea:focus{border-color:var(--gm);box-shadow:0 0 0 3px rgba(22,101,52,.1);}
+textarea{resize:vertical;min-height:64px;}
+.sw{position:relative;}.sw input{padding-left:30px;min-width:185px;}
+.sw::before{content:"⌕";position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--tx3);font-size:15px;pointer-events:none;z-index:1;}
+/* CARD */
+.card{background:var(--surf);border:1px solid var(--blt);border-radius:var(--rl);overflow:hidden;margin-bottom:14px;}
+.card-hd{padding:13px 17px;border-bottom:1px solid var(--blt);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+.card-hd h3{font-size:13.5px;font-weight:600;}
+.card-bd{padding:17px;}
+/* TABLE */
+.tw{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+thead th{padding:8px 12px;text-align:left;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);background:var(--bg);border-bottom:1px solid var(--bdr);white-space:nowrap;}
+tbody tr{transition:background .1s;}
+tbody tr:hover{background:var(--bg);}
+tbody td{padding:10px 12px;border-bottom:1px solid var(--blt);vertical-align:middle;}
+tbody tr:last-child td{border-bottom:none;}
+/* BADGES */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;}
+.b-gn{background:var(--gl);color:var(--gn);}
+.b-bl{background:var(--bll);color:var(--bl);}
+.b-am{background:var(--aml);color:var(--am);}
+.b-rd{background:var(--rdl);color:var(--rd);}
+.b-pu{background:var(--pul);color:var(--pu);}
+.b-tl{background:var(--tll);color:var(--tl);}
+.b-ro{background:var(--rol);color:var(--ro);}
+.b-sl{background:var(--sll);color:var(--sl);}
+.b-gy{background:var(--surf2);color:var(--tx2);}
+/* station */
+.bs-st{background:#D1FAE5;color:#065F46;}
+.bs-im{background:#DBEAFE;color:#1E40AF;}
+.bs-ep{background:#EDE9FE;color:#5B21B6;}
+.bs-ch{background:#FEF3C7;color:#92400E;}
+.bs-mo{background:#DCFCE7;color:#14532D;}
+.bs-hd{background:#F3F4F6;color:#374151;}
+.bs-ru{background:#FCE7F3;color:#831843;}
+.bs-lv{background:#FEE2E2;color:#991B1B;}
+.bs-ot{background:#F3F4F6;color:#6B7280;}
+/* DOT */
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0;}
+.dg{background:#16A34A;}.dr{background:#DC2626;}.da{background:#D97706;}
+/* MODAL */
+.ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:100;align-items:center;justify-content:center;padding:16px;}
+.ov.on{display:flex;}
+.modal{background:var(--surf);border-radius:var(--rl);width:100%;max-width:530px;max-height:92vh;overflow-y:auto;box-shadow:var(--shm);}
+.mhd{padding:17px 21px 13px;border-bottom:1px solid var(--blt);display:flex;align-items:center;justify-content:space-between;}
+.mhd h2{font-size:15px;font-weight:600;}
+.mx{background:none;border:none;cursor:pointer;font-size:22px;color:var(--tx3);padding:0 4px;line-height:1;border-radius:4px;}
+.mx:hover{background:var(--surf2);}
+.mbd{padding:17px 21px;}
+.mft{padding:13px 21px;border-top:1px solid var(--blt);display:flex;gap:8px;justify-content:flex-end;}
+/* FORM */
+.fg{margin-bottom:13px;}
+.fg label{display:block;font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.06em;}
+.fg input,.fg select,.fg textarea{width:100%;}
+.fg .hint{font-size:11px;color:var(--tx3);margin-top:3px;}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:11px;}
+/* TOAST */
+.toasts{position:fixed;bottom:20px;right:20px;z-index:300;display:flex;flex-direction:column;gap:7px;}
+.toast{background:var(--tx);color:#fff;padding:10px 15px;border-radius:9px;font-size:13px;font-weight:500;box-shadow:var(--shm);animation:su .22s ease;display:flex;align-items:center;gap:7px;min-width:190px;}
+.toast.ok{background:var(--gm);}.toast.err{background:var(--rd);}
+@keyframes su{from{opacity:0;transform:translateY(7px);}to{opacity:1;transform:translateY(0);}}
+/* UPLOAD */
+.dz{border:2px dashed var(--bdr);border-radius:var(--rl);padding:26px 20px;text-align:center;cursor:pointer;transition:all .2s;}
+.dz:hover,.dz.drag{border-color:var(--gm);background:var(--gll);}
+.dz-ic{font-size:28px;margin-bottom:9px;}
+.dz h3{font-size:13.5px;font-weight:600;margin-bottom:4px;}
+.dz p{font-size:12px;color:var(--tx3);}
+.dz code{font-family:'DM Mono';font-size:11px;color:var(--gm);}
+/* CHART */
+.cw{position:relative;width:100%;}
+/* PROGRESS */
+.pbw{background:var(--surf2);border-radius:4px;height:5px;overflow:hidden;flex:1;}
+.pb{height:100%;border-radius:4px;background:var(--gm);transition:width .4s ease;}
+/* EMPTY */
+.empty{padding:38px 20px;text-align:center;color:var(--tx3);}
+.empty h3{font-size:14px;font-weight:600;color:var(--tx2);margin-bottom:5px;}
+.empty p{font-size:12px;}
+@media(max-width:780px){
+  .app{grid-template-columns:1fr;}
+  .sb{height:auto;position:relative;}
+  .cnt{padding:14px;}
+  .fr{grid-template-columns:1fr;}
+}
+/* STATS PAGE */
+.score-ring{width:56px;height:56px;flex-shrink:0;}
+.score-ring circle{fill:none;stroke-width:5;stroke-linecap:round;}
+.doc-card{background:var(--surf);border:1px solid var(--blt);border-radius:var(--rl);padding:16px 18px;margin-bottom:10px;transition:box-shadow .15s;}
+.doc-card:hover{box-shadow:var(--shm);}
+.doc-card-top{display:flex;align-items:center;gap:14px;margin-bottom:12px;}
+.doc-avatar{width:42px;height:42px;border-radius:50%;background:var(--sl);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0;font-family:'DM Mono',monospace;}
+.doc-name{font-size:14px;font-weight:600;}
+.doc-role{font-size:11.5px;color:var(--tx3);}
+.doc-metrics{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;}
+.dm{background:var(--bg);border-radius:8px;padding:9px 10px;text-align:center;}
+.dm-val{font-size:17px;font-weight:600;color:var(--tx);line-height:1;}
+.dm-lb{font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);margin-top:4px;}
+.dm.hi .dm-val{color:var(--gm);}
+.dm.lo .dm-val{color:var(--rd);}
+.rank-badge{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;font-size:11px;font-weight:700;flex-shrink:0;}
+.rank-1{background:#FEF3C7;color:#78350F;}
+.rank-2{background:#F3F4F6;color:#374151;}
+.rank-3{background:#FEE2E2;color:#991B1B;}
+.rank-n{background:var(--surf2);color:var(--tx3);}
+.perf-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.perf-bar-label{font-size:12px;font-weight:500;min-width:90px;color:var(--tx2);}
+.perf-bar-wrap{flex:1;background:var(--surf2);border-radius:4px;height:8px;overflow:hidden;}
+.perf-bar{height:100%;border-radius:4px;transition:width .5s ease;}
+.perf-bar-val{font-size:12px;font-weight:600;min-width:38px;text-align:right;color:var(--tx2);}
+.radar-wrap{position:relative;width:100%;max-width:320px;margin:0 auto;}
+.st-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px;}
+.st-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+.legend-row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--tx2);}
+.leg-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
+/* SUPABASE SETUP OVERLAY */
+#sb-setup{position:fixed;inset:0;background:var(--sl);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px;}
+#sb-setup.hidden{display:none;}
+.sb-setup-box{background:var(--surf);border-radius:var(--rl);padding:36px 40px;max-width:500px;width:100%;box-shadow:var(--shm);}
+.sb-setup-box .brand{font-family:'Lora',serif;font-size:13px;font-weight:600;color:var(--gm);margin-bottom:10px;}
+.sb-setup-box h2{font-size:19px;font-weight:600;margin-bottom:8px;}
+.sb-setup-box .desc{font-size:13px;color:var(--tx2);margin-bottom:20px;line-height:1.6;}
+.step-row{display:flex;gap:10px;align-items:flex-start;margin-bottom:12px;font-size:12.5px;color:var(--tx2);line-height:1.55;}
+.step-n{background:var(--sl);color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px;}
+.step-row code{font-family:'DM Mono',monospace;background:var(--surf2);padding:1px 5px;border-radius:4px;font-size:11px;}
+#sync-bar{position:fixed;bottom:0;left:250px;right:0;height:26px;background:var(--surf);border-top:1px solid var(--blt);display:flex;align-items:center;padding:0 20px;gap:7px;font-size:11px;color:var(--tx3);z-index:15;}
+.sdot{width:7px;height:7px;border-radius:50%;background:#9CA3AF;flex-shrink:0;}
+.sdot.ok{background:#16A34A;}.sdot.sy{background:#D97706;animation:pls .8s infinite alternate;}.sdot.er{background:#DC2626;}
+@keyframes pls{from{opacity:.4;}to{opacity:1;}}
+#load-screen{position:fixed;inset:0;background:var(--sl);z-index:998;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:#fff;font-size:14px;}
+#load-screen.hidden{display:none;}
+.spinner{width:30px;height:30px;border:3px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+<!-- SUPABASE SETUP SCREEN -->
+<div id="sb-setup">
+  <div class="sb-setup-box">
+    <div class="brand">PHC Resident Doctors Activity Tracker</div>
+    <h2>Connect to Supabase</h2>
+    <p class="desc">Enter your Supabase project credentials. These are stored only in your browser and never sent anywhere except your own Supabase project.</p>
+    <div class="step-row"><div class="step-n">1</div><div>Go to <strong>supabase.com</strong> → your project → <strong>Settings → API</strong></div></div>
+    <div class="step-row"><div class="step-n">2</div><div>Copy the <strong>Project URL</strong> and <strong>anon public</strong> key</div></div>
+    <div class="step-row"><div class="step-n">3</div><div>Run the SQL schema: open <code>supabase_schema.sql</code> in your project's <strong>SQL Editor</strong> and click Run</div></div>
+    <div style="margin-top:20px;">
+      <div class="fg" style="margin-bottom:12px;">
+        <label style="display:block;font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.06em;">Supabase Project URL</label>
+        <input type="text" id="cfg-url" placeholder="https://xxxxxxxxxxxx.supabase.co" style="width:100%;"/>
+      </div>
+      <div class="fg" style="margin-bottom:20px;">
+        <label style="display:block;font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.06em;">Anon / Public Key</label>
+        <input type="text" id="cfg-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…" style="width:100%;font-family:'DM Mono',monospace;font-size:11.5px;"/>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <button class="btn btn-p" onclick="connectSupabase()" style="flex:1;">Connect & Load Data</button>
+        <button class="btn btn-s" onclick="useOffline()" style="font-size:12px;">Use offline (localStorage)</button>
+      </div>
+      <p id="cfg-err" style="color:var(--rd);font-size:12px;margin-top:10px;display:none;"></p>
+    </div>
+  </div>
+</div>
+
+<!-- LOADING SCREEN -->
+<div id="load-screen" class="hidden">
+  <div class="spinner"></div>
+  <span id="load-msg">Loading data…</span>
+</div>
+
+<!-- SYNC STATUS BAR -->
+<div id="sync-bar" style="display:none;">
+  <span class="sdot ok" id="sync-dot"></span>
+  <span id="sync-msg">Connected to Supabase</span>
+  <span style="margin-left:auto;font-size:10.5px;color:var(--tx3);" id="sync-info"></span>
+  <button class="btn btn-s btn-sm" onclick="refreshAll()" style="font-size:11px;padding:3px 8px;">↻ Refresh</button>
+  <button class="btn btn-s btn-sm" onclick="showConfig()" style="font-size:11px;padding:3px 8px;">⚙ Config</button>
+</div>
+
+<div class="app">
+
+<!-- ══ SIDEBAR ══ -->
+<aside class="sb">
+  <div class="sb-logo">
+    <div class="tag">Dept. Community Health & PHC</div>
+    <h1>Resident Doctors Activity Tracker</h1>
+    <div class="dep">Lagos State · 2022–2026</div>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-sec">Overview</div>
+    <div class="ni on" data-pg="dashboard" onclick="nav(this)">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" stroke-width="2"/></svg>Dashboard
+    </div>
+    <div class="ni" data-pg="stats" onclick="nav(this)">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>Statistics & Performance
+    </div>
+    <div class="sb-sec">Roster & Leave</div>
+    <div class="ni" data-pg="roster" onclick="nav(this)">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>Duty Roster
+    </div>
+    <div class="ni" data-pg="leave" onclick="nav(this)">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>Leave Schedule
+    </div>
+    <div class="sb-sec">Academic Activities</div>
+    <div class="ni" data-pg="journal" onclick="nav(this)">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>Journal Presentations
+    </div>
+    <div class="ni" data-pg="seminar" onclick="nav(this)">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Seminars
+    </div>
+    <div class="ni" data-pg="research" onclick="nav(this)">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Research & Publications
+    </div>
+    <div class="ni" data-pg="other" onclick="nav(this)">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"/></svg>Other Activities
+    </div>
+    <div class="sb-sec">Data</div>
+    <div class="ni" data-pg="import" onclick="nav(this)">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>Import Data
+    </div>
+  </nav>
+  <div class="sb-foot">Department of Community Health &amp; PHC<br/>Resident Doctors · Lagos State</div>
+</aside>
+
+<!-- ══ MAIN ══ -->
+<div class="main">
+<div class="topbar">
+  <div class="tb-l"><h2 id="tb-t">Dashboard</h2><p id="tb-s">Overview of all resident doctor activities</p></div>
+  <div class="tb-r">
+    <select id="gYear" onchange="renderActive()" style="font-size:12.5px;padding:6px 10px;">
+      <option value="all">All years</option>
+    </select>
+    <button class="btn btn-s btn-sm" onclick="openM('m-post')">+ Posting</button>
+    <button class="btn btn-s btn-sm" onclick="openM('m-leave')">+ Leave</button>
+    <button class="btn btn-p btn-sm" onclick="openAct()">+ Activity</button>
+  </div>
+</div>
+
+<div class="cnt">
+
+<!-- DASHBOARD -->
+<div class="pg on" id="p-dashboard">
+  <div class="mrow" id="db-mc"></div>
+  <div style="display:grid;grid-template-columns:1.1fr .9fr;gap:14px;margin-bottom:14px;">
+    <div class="card">
+      <div class="card-hd"><h3>Postings by station</h3></div>
+      <div class="card-bd"><div class="cw" style="height:210px;"><canvas id="c-stn"></canvas></div></div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><h3>Activity completion</h3></div>
+      <div class="card-bd" id="db-comp"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-hd"><h3>Recent activities</h3></div>
+    <div class="tw"><table><thead><tr><th>Doctor</th><th>Type</th><th>Topic / Detail</th><th>Date</th><th>Status</th></tr></thead>
+    <tbody id="db-rec"></tbody></table></div>
+  </div>
+</div>
+
+<!-- ROSTER -->
+<div class="pg" id="p-roster">
+  <div class="fb">
+    <label>Year</label><select id="ry" onchange="renderRoster()"></select>
+    <label>Month</label><select id="rm" onchange="renderRoster()"><option value="all">All months</option></select>
+    <label>Station</label><select id="rst" onchange="renderRoster()"><option value="all">All stations</option></select>
+    <label>Report</label>
+    <select id="rrs" onchange="renderRoster()">
+      <option value="all">All</option><option value="completed">Signed</option><option value="pending">Pending</option>
+    </select>
+    <div class="sw" style="margin-left:auto;"><input type="text" id="rq" placeholder="Search doctor…" oninput="renderRoster()"/></div>
+    <button class="btn btn-s btn-sm" onclick="xCSV('postings')">⬇ CSV</button>
+  </div>
+  <div class="card">
+    <div class="card-hd"><h3>Duty roster <span id="r-ct" style="font-size:12px;font-weight:400;color:var(--tx3);"></span></h3></div>
+    <div class="tw"><table><thead id="r-th"></thead><tbody id="r-tb"></tbody></table></div>
+  </div>
+</div>
+
+<!-- LEAVE -->
+<div class="pg" id="p-leave">
+  <div class="fb">
+    <label>Year</label><select id="ly" onchange="renderLeave()"></select>
+    <label>Type</label>
+    <select id="lt" onchange="renderLeave()">
+      <option value="all">All types</option><option>Annual leave</option><option>Exam leave</option><option>Maternity leave</option><option>Sick leave</option><option>Study leave</option>
+    </select>
+    <label>Status</label>
+    <select id="ls" onchange="renderLeave()">
+      <option value="all">All</option><option value="active">On leave now</option><option value="upcoming">Upcoming</option><option value="past">Past</option>
+    </select>
+    <div class="sw" style="margin-left:auto;"><input type="text" id="lq" placeholder="Search…" oninput="renderLeave()"/></div>
+    <button class="btn btn-s btn-sm" onclick="xCSV('leave')">⬇ CSV</button>
+  </div>
+  <div class="card">
+    <div class="card-hd"><h3>Leave schedule <span id="l-ct" style="font-size:12px;font-weight:400;color:var(--tx3);"></span></h3></div>
+    <div class="tw"><table>
+      <thead><tr><th>#</th><th>Doctor</th><th>Type</th><th>Start</th><th>End</th><th>Duration</th><th>Reliever</th><th>Status</th><th></th></tr></thead>
+      <tbody id="l-tb"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- JOURNAL -->
+<div class="pg" id="p-journal">
+  <div class="fb">
+    <label>Year</label><select id="jy" onchange="rAct('journal')"></select>
+    <label>Status</label>
+    <select id="js" onchange="rAct('journal')">
+      <option value="all">All</option><option>Completed</option><option>Scheduled</option><option>Missed</option>
+    </select>
+    <div class="sw" style="margin-left:auto;"><input type="text" id="jq" placeholder="Search…" oninput="rAct('journal')"/></div>
+    <button class="btn btn-s btn-sm" onclick="xCSV('journal')">⬇ CSV</button>
+  </div>
+  <div class="card">
+    <div class="card-hd"><h3>Journal presentation schedule <span id="j-ct" style="font-size:12px;font-weight:400;color:var(--tx3);"></span></h3></div>
+    <div class="tw"><table><thead id="j-th"></thead><tbody id="j-tb"></tbody></table></div>
+  </div>
+</div>
+
+<!-- SEMINAR -->
+<div class="pg" id="p-seminar">
+  <div class="fb">
+    <label>Year</label><select id="sy" onchange="rAct('seminar')"></select>
+    <label>Status</label>
+    <select id="ss" onchange="rAct('seminar')">
+      <option value="all">All</option><option>Completed</option><option>Scheduled</option><option>Missed</option>
+    </select>
+    <div class="sw" style="margin-left:auto;"><input type="text" id="sq" placeholder="Search…" oninput="rAct('seminar')"/></div>
+    <button class="btn btn-s btn-sm" onclick="xCSV('seminar')">⬇ CSV</button>
+  </div>
+  <div class="card">
+    <div class="card-hd"><h3>Seminar presentations <span id="s-ct" style="font-size:12px;font-weight:400;color:var(--tx3);"></span></h3></div>
+    <div class="tw"><table><thead id="s-th"></thead><tbody id="s-tb"></tbody></table></div>
+  </div>
+</div>
+
+<!-- RESEARCH -->
+<div class="pg" id="p-research">
+  <div class="fb">
+    <label>Year</label><select id="rey" onchange="rAct('research')"></select>
+    <label>Type</label>
+    <select id="ret" onchange="rAct('research')">
+      <option value="all">All types</option><option>Research project</option><option>Journal publication</option><option>Conference paper</option><option>Thesis/Dissertation</option><option>Book chapter</option>
+    </select>
+    <label>Status</label>
+    <select id="res" onchange="rAct('research')">
+      <option value="all">All</option><option>In progress</option><option>Submitted</option><option>Published</option>
+    </select>
+    <div class="sw" style="margin-left:auto;"><input type="text" id="req" placeholder="Search…" oninput="rAct('research')"/></div>
+  </div>
+  <div class="card">
+    <div class="card-hd"><h3>Research &amp; publications <span id="re-ct" style="font-size:12px;font-weight:400;color:var(--tx3);"></span></h3></div>
+    <div class="tw"><table><thead id="re-th"></thead><tbody id="re-tb"></tbody></table></div>
+  </div>
+</div>
+
+<!-- OTHER -->
+<div class="pg" id="p-other">
+  <div class="fb">
+    <label>Year</label><select id="oy" onchange="rAct('other')"></select>
+    <label>Category</label>
+    <select id="oc" onchange="rAct('other')">
+      <option value="all">All categories</option><option>Clinical audit</option><option>Community outreach</option><option>Training / Workshop</option><option>Administrative</option><option>CME</option><option>Other</option>
+    </select>
+    <label>Status</label>
+    <select id="os" onchange="rAct('other')">
+      <option value="all">All</option><option>Planned</option><option>Ongoing</option><option>Completed</option>
+    </select>
+    <div class="sw" style="margin-left:auto;"><input type="text" id="oq" placeholder="Search…" oninput="rAct('other')"/></div>
+  </div>
+  <div class="card">
+    <div class="card-hd"><h3>Other activities <span id="o-ct" style="font-size:12px;font-weight:400;color:var(--tx3);"></span></h3></div>
+    <div class="tw"><table><thead id="o-th"></thead><tbody id="o-tb"></tbody></table></div>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="pg" id="p-stats">
+  <div class="fb">
+    <label>Year</label><select id="sty" onchange="renderStats()"><option value="all">All years</option></select>
+    <label>Sort by</label>
+    <select id="st-sort" onchange="renderStats()">
+      <option value="score">Overall score</option>
+      <option value="posts">Postings</option>
+      <option value="acts">Activities</option>
+      <option value="name">Name</option>
+    </select>
+    <div class="sw" style="margin-left:auto;"><input type="text" id="stq" placeholder="Search doctor…" oninput="renderStats()"/></div>
+    <button class="btn btn-s btn-sm" onclick="xStatsCSV()">⬇ Export report</button>
+  </div>
+
+  <!-- Summary metrics row -->
+  <div class="mrow" id="st-mc"></div>
+
+  <!-- Annual targets banner -->
+  <div class="card" style="margin-bottom:14px;">
+    <div class="card-hd"><h3>Annual targets per doctor</h3><span style="font-size:11.5px;color:var(--tx3);">Each target = 20 points toward the 100-point score</span></div>
+    <div class="card-bd" id="st-targets"></div>
+  </div>
+
+  <!-- Charts row -->
+  <div class="st-grid">
+    <div class="card">
+      <div class="card-hd"><h3>Activity by type</h3></div>
+      <div class="card-bd"><div class="cw" style="height:200px;"><canvas id="c-acttype"></canvas></div></div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><h3>Posting report sign-off</h3></div>
+      <div class="card-bd"><div class="cw" style="height:200px;"><canvas id="c-signoff"></canvas></div></div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><h3>Activity status mix</h3></div>
+      <div class="card-bd"><div class="cw" style="height:200px;"><canvas id="c-actst"></canvas></div></div>
+    </div>
+  </div>
+
+  <div class="st-grid-2">
+    <div class="card">
+      <div class="card-hd"><h3>Activities per doctor</h3></div>
+      <div class="card-bd">
+        <div class="cw" id="c-dpbar-wrap" style="height:260px;"><canvas id="c-dpbar"></canvas></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><h3>Completion rate by doctor</h3></div>
+      <div class="card-bd" id="st-comprates"></div>
+    </div>
+  </div>
+
+  <!-- Leaderboard -->
+  <div class="card" style="margin-bottom:14px;">
+    <div class="card-hd">
+      <h3>Performance leaderboard</h3>
+      <span style="font-size:11.5px;color:var(--tx3);">Score = weighted sum across all activity domains</span>
+    </div>
+    <div class="tw"><table>
+      <thead><tr>
+        <th>Rank</th><th>Doctor</th>
+        <th title="Reports signed (target ≥6)">Sign-offs</th>
+        <th title="Journal presentations (target ≥1)">Journal pres.</th>
+        <th title="Seminar presentations (target ≥1)">Seminar pres.</th>
+        <th title="Publications (target ≥1)">Publications</th>
+        <th title="Research projects (target ≥1)">Research proj.</th>
+        <th>Targets met</th>
+        <th>Score /100</th>
+      </tr></thead>
+      <tbody id="st-lb"></tbody>
+    </table></div>
+  </div>
+
+  <!-- Doctor cards -->
+  <div class="card-hd" style="background:var(--surf);border:1px solid var(--blt);border-radius:var(--rl) var(--rl) 0 0;padding:13px 17px;">
+    <h3>Doctor performance cards</h3>
+    <span style="font-size:11.5px;color:var(--tx3);">Detailed breakdown per doctor</span>
+  </div>
+  <div id="st-cards" style="background:var(--bg);padding:14px;border:1px solid var(--blt);border-top:none;border-radius:0 0 var(--rl) var(--rl);display:grid;grid-template-columns:1fr 1fr;gap:12px;"></div>
+</div>
+
+<!-- IMPORT -->
+<div class="pg" id="p-import">
+  <!-- Upload type selector tabs -->
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px;" id="imp-tabs">
+    <button class="btn btn-p btn-sm" onclick="setImpType('roster',this)" id="itab-roster">📋 Duty Roster</button>
+    <button class="btn btn-s btn-sm" onclick="setImpType('leave',this)" id="itab-leave">🗓 Leave Schedule</button>
+    <button class="btn btn-s btn-sm" onclick="setImpType('journal',this)" id="itab-journal">📖 Journal Presentations</button>
+    <button class="btn btn-s btn-sm" onclick="setImpType('seminar',this)" id="itab-seminar">🎤 Seminars</button>
+    <button class="btn btn-s btn-sm" onclick="setImpType('research',this)" id="itab-research">🔬 Research & Pubs</button>
+    <button class="btn btn-s btn-sm" onclick="setImpType('other',this)" id="itab-other">📌 Other Activities</button>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;">
+    <div>
+      <!-- Upload zone -->
+      <div class="card">
+        <div class="card-hd"><h3 id="imp-title">Upload Duty Roster CSV</h3></div>
+        <div class="card-bd">
+          <div class="dz" id="dz" onclick="document.getElementById('fu').click()"
+            ondragover="event.preventDefault();this.classList.add('drag')"
+            ondragleave="this.classList.remove('drag')"
+            ondrop="hDrop(event)">
+            <div class="dz-ic">📄</div>
+            <h3>Drop file or click to browse</h3>
+            <p>Supports CSV / TSV files</p>
+            <p style="margin-top:7px;" id="imp-cols-hint"><code>DOCTOR, MONTH, YEAR, STATION</code></p>
+          </div>
+          <input type="file" id="fu" style="display:none;" accept=".csv,.tsv,.txt" onchange="hFile(this.files[0])"/>
+          <div id="up-pv" style="display:none;margin-top:11px;background:var(--surf2);border-radius:var(--r);padding:13px;font-size:12px;border:1px solid var(--blt);"></div>
+          <div id="up-ac" style="display:none;margin-top:9px;gap:8px;">
+            <button class="btn btn-p" onclick="doImport()">Import records</button>
+            <button class="btn btn-s" onclick="cancelImp()">Cancel</button>
+          </div>
+          <div style="margin-top:13px;display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-s btn-sm" onclick="dlTpl()">⬇ Download template</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Format guide -->
+      <div class="card">
+        <div class="card-hd"><h3>CSV format guide</h3></div>
+        <div class="card-bd" id="imp-guide">
+          <!-- populated by setImpType -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Records table -->
+    <div class="card">
+      <div class="card-hd">
+        <h3 id="imp-rec-title">Posting records <span id="imp-ct" style="font-size:12px;font-weight:400;color:var(--tx3);"></span></h3>
+        <button class="btn btn-d btn-sm" onclick="clearActive()">Clear this type</button>
+      </div>
+      <div style="max-height:550px;overflow-y:auto;">
+        <div class="tw"><table>
+          <thead id="imp-rec-th"></thead>
+          <tbody id="imp-tb"></tbody>
+        </table></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /cnt -->
+</div><!-- /main -->
+</div><!-- /app -->
+
+<!-- ══ MODAL: Posting ══ -->
+<div class="ov" id="m-post">
+  <div class="modal">
+    <div class="mhd"><h2>Add / Edit Posting</h2><button class="mx" onclick="closeM('m-post')">×</button></div>
+    <div class="mbd">
+      <input type="hidden" id="mp-id"/>
+      <div class="fg"><label>Doctor *</label><input id="mp-doc" list="dl-d" placeholder="e.g. ADEBANJO"/></div>
+      <div class="fr">
+        <div class="fg"><label>Month *</label>
+          <select id="mp-mo"><option>January</option><option>February</option><option>March</option><option>April</option><option>May</option><option>June</option><option>July</option><option>August</option><option>September</option><option>October</option><option>November</option><option>December</option></select>
+        </div>
+        <div class="fg"><label>Year *</label><input id="mp-yr" placeholder="2026"/></div>
+      </div>
+      <div class="fg"><label>Station / Posting *</label><input id="mp-st" list="dl-s" placeholder="CHEST, IMM, STAFF…"/></div>
+      <div class="fg"><label>Consultant sign-off status</label>
+        <select id="mp-rs">
+          <option value="pending">Pending — consultant report not yet signed</option>
+          <option value="completed">Completed — consultant signed report</option>
+        </select>
+      </div>
+      <div class="fg" id="mp-con-grp"><label>Signing consultant</label><input id="mp-con" placeholder="Name of consultant who signed"/></div>
+      <div class="fg"><label>Notes</label><textarea id="mp-nt" rows="2"></textarea></div>
+    </div>
+    <div class="mft"><button class="btn btn-s" onclick="closeM('m-post')">Cancel</button><button class="btn btn-p" onclick="savePost()">Save posting</button></div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Leave ══ -->
+<div class="ov" id="m-leave">
+  <div class="modal">
+    <div class="mhd"><h2>Add / Edit Leave Entry</h2><button class="mx" onclick="closeM('m-leave')">×</button></div>
+    <div class="mbd">
+      <input type="hidden" id="ml-id"/>
+      <div class="fg"><label>Doctor *</label><input id="ml-doc" list="dl-d" placeholder="Dr. Adebanjo R. A."/></div>
+      <div class="fr">
+        <div class="fg"><label>Start date *</label><input type="date" id="ml-s"/></div>
+        <div class="fg"><label>End date *</label><input type="date" id="ml-e"/></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>Duration</label><input id="ml-dur" placeholder="e.g. 10 working days"/></div>
+        <div class="fg"><label>Leave type</label>
+          <select id="ml-ty"><option>Annual leave</option><option>Exam leave</option><option>Maternity leave</option><option>Sick leave</option><option>Study leave</option></select>
+        </div>
+      </div>
+      <div class="fg"><label>Reliever</label><input id="ml-rel" list="dl-d" placeholder="Dr. Jeje"/></div>
+      <div class="fg"><label>Notes</label><textarea id="ml-nt" rows="2"></textarea></div>
+    </div>
+    <div class="mft"><button class="btn btn-s" onclick="closeM('m-leave')">Cancel</button><button class="btn btn-p" onclick="saveLeave()">Save leave</button></div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Activity ══ -->
+<div class="ov" id="m-act">
+  <div class="modal">
+    <div class="mhd"><h2>Add / Edit Activity</h2><button class="mx" onclick="closeM('m-act')">×</button></div>
+    <div class="mbd">
+      <input type="hidden" id="ma-id"/>
+      <div class="fr">
+        <div class="fg"><label>Activity type *</label>
+          <select id="ma-kind" onchange="togActF()">
+            <option value="journal">Journal presentation</option>
+            <option value="seminar">Seminar presentation</option>
+            <option value="research">Research / Publication</option>
+            <option value="other">Other activity</option>
+          </select>
+        </div>
+        <div class="fg"><label>Doctor *</label><input id="ma-doc" list="dl-d" placeholder="Doctor name"/></div>
+      </div>
+      <div class="fg"><label>Title / Topic *</label><input id="ma-ti" placeholder="Topic or title"/></div>
+      <div class="fr">
+        <div class="fg"><label>Date</label><input type="date" id="ma-dt"/></div>
+        <div class="fg"><label>Year</label><input id="ma-yr" placeholder="2026"/></div>
+      </div>
+      <!-- presentation fields -->
+      <div id="f-pres">
+        <div class="fr">
+          <div class="fg"><label>Venue</label><input id="ma-ve" placeholder="Conference room…"/></div>
+          <div class="fg"><label id="ma-xl">Discussant</label><input id="ma-ex" placeholder="Name"/></div>
+        </div>
+      </div>
+      <!-- research fields -->
+      <div id="f-res" style="display:none;">
+        <div class="fr">
+          <div class="fg"><label>Publication type</label>
+            <select id="ma-pt"><option>Research project</option><option>Journal publication</option><option>Conference paper</option><option>Thesis/Dissertation</option><option>Book chapter</option></select>
+          </div>
+          <div class="fg"><label>Journal / Conference</label><input id="ma-jn" placeholder="Journal or conference name"/></div>
+        </div>
+      </div>
+      <!-- other fields -->
+      <div id="f-oth" style="display:none;">
+        <div class="fg"><label>Category</label>
+          <select id="ma-cat"><option>Clinical audit</option><option>Community outreach</option><option>Training / Workshop</option><option>Administrative</option><option>CME</option><option>Other</option></select>
+        </div>
+      </div>
+      <div class="fg"><label>Status *</label><select id="ma-st">
+        <option>Scheduled</option><option>Completed</option><option>Missed</option>
+      </select></div>
+      <div class="fg"><label>Notes</label><textarea id="ma-nt" rows="2"></textarea></div>
+    </div>
+    <div class="mft"><button class="btn btn-s" onclick="closeM('m-act')">Cancel</button><button class="btn btn-p" onclick="saveAct()">Save activity</button></div>
+  </div>
+</div>
+
+<datalist id="dl-d"></datalist>
+<datalist id="dl-s"></datalist>
+<div class="toasts" id="toasts"></div>
+
+<script>
+// ══════════════════════════════════════════
+// DATA LAYER
+// ══════════════════════════════════════════
+const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+const uid=()=>Math.random().toString(36).slice(2,9);
+const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}};
+
+function mkPost(yr,docs,months){
+  return Object.entries(docs).flatMap(([doc,sts])=>
+    months.map((mo,i)=>({id:uid(),doctor:doc,month:mo,year:yr,station:sts[i]||"",rs:"pending",con:"",notes:""})));
+}
+
+// ══════════════════════════════════════════
+// SUPABASE DATA LAYER
+// ══════════════════════════════════════════
+let SB = null;       // supabase client
+let OFFLINE = false; // fallback to localStorage
+
+// In-memory DB (same shape as before — works offline and online)
+const DB = { posts: [], leave: [], acts: [] };
+
+// ── Config persistence ──
+function getCfg(){ return JSON.parse(localStorage.getItem('sb_cfg')||'{}'); }
+function setCfg(url,key){ localStorage.setItem('sb_cfg',JSON.stringify({url,key})); }
+
+function lsGet(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}}
+
+// ── Supabase connect ──
+async function connectSupabase(){
+  const url=document.getElementById("cfg-url").value.trim();
+  const key=document.getElementById("cfg-key").value.trim();
+  const err=document.getElementById("cfg-err");
+  if(!url||!key){err.style.display="block";err.textContent="Both fields are required.";return;}
+  err.style.display="none";
+  setSyncStatus("syncing","Connecting…");
+  try{
+    SB=supabase.createClient(url,key);
+    // Test connection
+    const {error}=await SB.from("postings").select("id").limit(1);
+    if(error)throw error;
+    setCfg(url,key);
+    document.getElementById("sb-setup").classList.add("hidden");
+    await loadAll();
+  }catch(e){
+    err.style.display="block";
+    err.textContent="Connection failed: "+(e.message||e.hint||JSON.stringify(e));
+    setSyncStatus("err","Connection failed");
+  }
+}
+
+function useOffline(){
+  OFFLINE=true;
+  // load seed data into DB
+  const seed=buildSeedData();
+  DB.posts=lsGet('rmd2_p',seed.posts);
+  DB.leave=lsGet('rmd2_l',seed.leave);
+  DB.acts=lsGet('rmd2_a',seed.acts);
+  document.getElementById("sb-setup").classList.add("hidden");
+  document.getElementById("sync-bar").style.display="flex";
+  setSyncStatus("ok","Offline mode (localStorage)");
+  bootApp();
+}
+
+function showConfig(){
+  const cfg=getCfg();
+  document.getElementById("cfg-url").value=cfg.url||"";
+  document.getElementById("cfg-key").value=cfg.key||"";
+  document.getElementById("sb-setup").classList.remove("hidden");
+}
+
+// ── Load all data from Supabase ──
+async function loadAll(){
+  const ls=document.getElementById("load-screen");
+  const lm=document.getElementById("load-msg");
+  ls.classList.remove("hidden");
+  setSyncStatus("syncing","Loading…");
+  try{
+    lm.textContent="Loading postings…";
+    const {data:posts,error:pe}=await SB.from("postings").select("*").order("year").order("created_at");
+    if(pe)throw pe;
+
+    lm.textContent="Loading leave records…";
+    const {data:leave,error:le}=await SB.from("leave_records").select("*").order("start_date");
+    if(le)throw le;
+
+    lm.textContent="Loading activities…";
+    const {data:acts,error:ae}=await SB.from("activities").select("*").order("date",{nullsFirst:false});
+    if(ae)throw ae;
+
+    DB.posts = posts.map(r=>({id:r.id,doctor:r.doctor,month:r.month,year:r.year,station:r.station,rs:r.rs,con:r.con||"",notes:r.notes||""}));
+    DB.leave = leave.map(r=>({id:r.id,name:r.name,type:r.type,start:r.start_date,end:r.end_date,dur:r.dur||"",rel:r.rel||"",notes:r.notes||""}));
+    DB.acts  = acts.map(r=>({id:r.id,kind:r.kind,doctor:r.doctor,title:r.title,date:r.date||"",year:r.year||"",venue:r.venue||"",extra:r.extra||"",pubtype:r.pubtype||"",jn:r.jn||"",category:r.category||"",status:r.status,notes:r.notes||""}));
+
+    ls.classList.add("hidden");
+    document.getElementById("sync-bar").style.display="flex";
+    setSyncStatus("ok",`Synced · ${DB.posts.length} postings, ${DB.leave.length} leave, ${DB.acts.length} activities`);
+    bootApp();
+  }catch(e){
+    ls.classList.add("hidden");
+    setSyncStatus("err","Load failed: "+(e.message||JSON.stringify(e)));
+    toast("Failed to load data: "+(e.message||"unknown error"),"err");
+    // Fall back to localStorage
+    OFFLINE=true;
+    const seed=buildSeedData();
+    DB.posts=lsGet('rmd2_p',seed.posts);
+    DB.leave=lsGet('rmd2_l',seed.leave);
+    DB.acts=lsGet('rmd2_a',seed.acts);
+    bootApp();
+  }
+}
+
+async function refreshAll(){
+  if(OFFLINE)return;
+  await loadAll();
+  renderActive();
+}
+
+// ── Save ──
+async function save(table, record, deleteId){
+  if(OFFLINE){
+    localStorage.setItem('rmd2_p',JSON.stringify(DB.posts));
+    localStorage.setItem('rmd2_l',JSON.stringify(DB.leave));
+    localStorage.setItem('rmd2_a',JSON.stringify(DB.acts));
+    return;
+  }
+  setSyncStatus("syncing","Saving…");
+  try{
+    if(deleteId){
+      const {error}=await SB.from(table).delete().eq("id",deleteId);
+      if(error)throw error;
+    } else {
+      const {error}=await SB.from(table).upsert(record,{onConflict:"id"});
+      if(error)throw error;
+    }
+    setSyncStatus("ok","Saved · "+new Date().toLocaleTimeString());
+  }catch(e){
+    setSyncStatus("err","Save failed");
+    toast("Save failed: "+(e.message||JSON.stringify(e)),"err");
+  }
+}
+
+// ── Bulk insert (for CSV import) ──
+async function bulkInsert(table, rows){
+  if(OFFLINE){
+    localStorage.setItem('rmd2_p',JSON.stringify(DB.posts));
+    localStorage.setItem('rmd2_l',JSON.stringify(DB.leave));
+    localStorage.setItem('rmd2_a',JSON.stringify(DB.acts));
+    return;
+  }
+  setSyncStatus("syncing",`Uploading ${rows.length} records…`);
+  try{
+    // insert in chunks of 500
+    for(let i=0;i<rows.length;i+=500){
+      const chunk=rows.slice(i,i+500);
+      const {error}=await SB.from(table).upsert(chunk,{onConflict:"id"});
+      if(error)throw error;
+    }
+    setSyncStatus("ok",`Uploaded ${rows.length} records`);
+  }catch(e){
+    setSyncStatus("err","Upload failed");
+    toast("Upload failed: "+(e.message||JSON.stringify(e)),"err");
+    throw e;
+  }
+}
+
+function setSyncStatus(state,msg){
+  const dot=document.getElementById("sync-dot");
+  const txt=document.getElementById("sync-msg");
+  if(!dot||!txt)return;
+  dot.className="sdot "+(state==="ok"?"ok":state==="syncing"?"sy":"er");
+  txt.textContent=msg;
+}
+
+// ── DB-to-Supabase mappers ──
+function postToRow(p){return{id:p.id,doctor:p.doctor,month:p.month,year:p.year,station:p.station,rs:p.rs||"pending",con:p.con||"",notes:p.notes||""};}
+function leaveToRow(l){return{id:l.id,name:l.name,type:l.type,start_date:l.start,end_date:l.end,dur:l.dur||"",rel:l.rel||"",notes:l.notes||""};}
+function actToRow(a){return{id:a.id,kind:a.kind,doctor:a.doctor,title:a.title,date:a.date||null,year:a.year||"",venue:a.venue||"",extra:a.extra||"",pubtype:a.pubtype||"",jn:a.jn||"",category:a.category||"",status:a.status||"Scheduled",notes:a.notes||""};}
+
+// ── Seed data (used offline and on first offline run) ──
+function buildSeedData(){
+  function mkP(yr,docs,months){return Object.entries(docs).flatMap(([doc,sts])=>months.map((mo,i)=>({id:uid(),doctor:doc,month:mo,year:yr,station:sts[i]||"",rs:"pending",con:"",notes:""})));}
+  return{
+    posts:[
+      ...mkP("2022",{ADELEKE:["STAFF","IMM","IMM"],ADEYEMI:["MOH ALAUSA","MOH ALAUSA","CHEST"],EMECHEBE:["NIMR","NIMR","EPID"],OGUNDIMU:["STAFF","STAFF","EPID"],SAMUEL:["CHEST","CHEST","STAFF"],DUROJAIYE:["IMM","STAFF","STAFF"],ANIFOWOSE:["MOSAN","MOSAN","IMM"],ODUNTAN:["HOD","OPTH/MENTAL","IMM"],BASHIR:["OPTH/ENT","IMM","IMM"],ADEPOJU:["OPTH/ENT","YOUTH FDLY","YOUTH FDLY/LEAVE"],ODUSOLA:["STAFF","CHEST","CHEST"],KILADEJO:["EPID","EPID","CHEST"],ADEBANJO:["CHEST","HOD","HOD"],POPOOLA:["IMM/YOUTH FDLY","IMM","STAFF"],OLOFIN:["RURAL","RURAL","MOH"],AKINYEMI:["MAT LEAVE","MAT LEAVE","MAT LEAVE"],JEJE:["IMM","EPID","LEAVE/CHEST"],OWOLABI:["YOUTH FDLY/LEAVE","LEAVE","MOSAN"],SONOIKI:["MOH","REHAB","PSYCH/DENTAL"],ANYANWU:["EPID","RURAL","RURAL"],OGUNYEMI:["CHEST","STAFF","STAFF"],YESUFU:["IMM","CHEST","CHEST"]},["January","February","March"]),
+      ...mkP("2023",{EMECHEBE:["IMM"],OGUNDIMU:["STAFF"],SAMUEL:["MOH ALAUSA"],DUROJAIYE:["EPID"],ANIFOWOSE:["IMM"],ODUNTAN:["CHEST"],BASHIR:["STAFF"],ADEPOJU:["YOUTH FDLY"],ODUSOLA:["IMM"],ADEBANJO:["RURAL"],POPOOLA:["STAFF"],OLOFIN:["YOUTH FDLY/LEAVE"],AKINYEMI:["PSYCH/OPTH"],JEJE:["MOSAN"],SONOIKI:["HOD"],ANYANWU:["A&E"],OGUNYEMI:["MOH"],IKPOGU:["PAED"],AWODELE:["CHEST"],ADEOTI:["IMM"]},["January"])
+    ],
+    leave:[
+      {id:uid(),name:"Dr. Adebanjo R. A.",start:"2026-03-02",end:"2026-03-30",dur:"4 weeks",rel:"Dr. Jeje",type:"Annual leave",notes:""},
+      {id:uid(),name:"Dr. Bashir K.",start:"2026-03-09",end:"2026-03-23",dur:"11 working days",rel:"Dr. Adepoju",type:"Annual leave",notes:""},
+      {id:uid(),name:"Dr. Adepoju F. O.",start:"2026-03-25",end:"2026-04-01",dur:"5 working days",rel:"Dr. Bashir",type:"Annual leave",notes:""},
+      {id:uid(),name:"Dr. Odufuwa F. A.",start:"2026-03-18",end:"2026-04-02",dur:"11 working days",rel:"Dr. Odunuga",type:"Annual leave",notes:""},
+      {id:uid(),name:"Dr. Obasanya A. M.",start:"2026-03-16",end:"2026-04-06",dur:"15 working days",rel:"Dr. Adeoti",type:"Annual leave",notes:""},
+      {id:uid(),name:"Dr. Awodele D. E.",start:"2026-03-16",end:"2026-03-20",dur:"5 working days",rel:"—",type:"Exam leave",notes:""},
+      {id:uid(),name:"Dr. Oyedeji O. A.",start:"2026-04-01",end:"2026-04-15",dur:"10 working days",rel:"Dr. Soetan",type:"Annual leave",notes:""},
+      {id:uid(),name:"Dr. Sonoiki Olushola",start:"2026-04-07",end:"2026-04-21",dur:"10 working days",rel:"Dr. Awodele",type:"Annual leave",notes:""}
+    ],
+    acts:[
+      {id:uid(),kind:"journal",doctor:"ADEBANJO",title:"Epidemiology of NCDs in LMICs",date:"2026-02-05",year:"2026",venue:"Dept. Conference Room",extra:"EMECHEBE",status:"Completed",notes:"Well attended",pubtype:"",jn:"",category:""},
+      {id:uid(),kind:"journal",doctor:"BASHIR",title:"Maternal Mortality in Sub-Saharan Africa",date:"2026-02-19",year:"2026",venue:"Dept. Conference Room",extra:"ADEPOJU",status:"Scheduled",notes:"",pubtype:"",jn:"",category:""},
+      {id:uid(),kind:"seminar",doctor:"SONOIKI",title:"Community Diagnosis: Principles & Practice",date:"2026-01-22",year:"2026",venue:"Lecture Theatre 2",extra:"Prof. Omotayo",status:"Completed",notes:"CME-accredited",pubtype:"",jn:"",category:""},
+      {id:uid(),kind:"seminar",doctor:"OGUNYEMI",title:"Health Systems Strengthening in PHC",date:"2026-03-12",year:"2026",venue:"Lecture Theatre 1",extra:"HOD",status:"Scheduled",notes:"",pubtype:"",jn:"",category:""},
+      {id:uid(),kind:"research",doctor:"EMECHEBE",title:"Prevalence of Hypertension in Rural Communities of Ogun State",date:"2025-11-01",year:"2025",pubtype:"Research project",jn:"Nigerian Journal of Medicine",status:"Published",notes:"Vol 34, Issue 2",venue:"",extra:"",category:""},
+      {id:uid(),kind:"research",doctor:"ADEBANJO",title:"Knowledge of Childhood Immunisation among Mothers in Lagos",date:"2026-01-15",year:"2026",pubtype:"Journal publication",jn:"West African Journal of Medicine",status:"Submitted",notes:"Under peer review",venue:"",extra:"",category:""},
+      {id:uid(),kind:"other",doctor:"DUROJAIYE",title:"Immunisation Outreach — Agege Community",date:"2026-02-10",year:"2026",category:"Community outreach",status:"Completed",notes:"240 children vaccinated",pubtype:"",jn:"",venue:"",extra:""},
+      {id:uid(),kind:"other",doctor:"ANIFOWOSE",title:"Departmental Quality Improvement Audit",date:"2026-03-01",year:"2026",category:"Clinical audit",status:"Ongoing",notes:"",pubtype:"",jn:"",venue:"",extra:""}
+    ]
+  };
+}
+
+// ══════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════
+const getYrs=()=>[...new Set([...DB.posts.map(p=>p.year),...DB.leave.map(l=>l.start.slice(0,4)),...DB.acts.map(a=>a.year||a.date?.slice(0,4)||"")])].filter(Boolean).sort().reverse();
+const getDocs=()=>[...new Set(DB.posts.map(p=>p.doctor))].sort();
+const getStns=()=>[...new Set(DB.posts.map(p=>p.station.split("/")[0].trim().toUpperCase()))].filter(Boolean).sort();
+const fmtD=d=>{if(!d)return"—";try{return new Date(d).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});}catch{return d;}};
+const GY=()=>document.getElementById("gYear").value;
+
+function leaveStatus(l){
+  const now=new Date(),s=new Date(l.start),e=new Date(l.end);
+  if(now>=s&&now<=e)return"active";
+  if(now<s)return"upcoming";
+  return"past";
+}
+
+function stBadge(st){
+  if(!st)return"bs-ot";const s=st.toUpperCase();
+  if(s.includes("STAFF"))return"bs-st";if(s.includes("IMM"))return"bs-im";
+  if(s.includes("EPID"))return"bs-ep";if(s.includes("CHEST"))return"bs-ch";
+  if(s.includes("MOH")||s.includes("ALAUSA"))return"bs-mo";if(s.includes("HOD"))return"bs-hd";
+  if(s.includes("RURAL"))return"bs-ru";if(s.includes("LEAVE")||s.includes("MAT"))return"bs-lv";
+  return"bs-ot";
+}
+function actBadge(st){
+  const m={Completed:"b-gn",Scheduled:"b-bl",Missed:"b-rd",Published:"b-tl","In progress":"b-am",Submitted:"b-pu",Ongoing:"b-am",Planned:"b-sl"};
+  return m[st]||"b-gy";
+}
+const dot=(on,color)=>`<span class="dot ${color||( on?"dg":"dr")}"></span>`;
+
+// ══════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════
+const PMETA={
+  dashboard:["Dashboard","Overview of all resident doctor activities"],
+  stats:["Statistics & Performance","Doctor performance scores, leaderboard and activity analytics"],
+  roster:["Duty Roster","Postings with consultant sign-off status"],
+  leave:["Leave Schedule","Leave tracking with live status"],
+  journal:["Journal Presentations","Journal club schedule & records"],
+  seminar:["Seminars","Seminar presentation schedule & records"],
+  research:["Research & Publications","Research projects and publications"],
+  other:["Other Activities","Clinical audits, outreach, CME and more"],
+  import:["Import Data","Upload CSV or manage all records"]
+};
+
+function nav(el){
+  document.querySelectorAll(".ni").forEach(n=>n.classList.remove("on"));
+  document.querySelectorAll(".pg").forEach(p=>p.classList.remove("on"));
+  el.classList.add("on");
+  const pg=el.dataset.pg;
+  document.getElementById("p-"+pg).classList.add("on");
+  const [t,s]=PMETA[pg]||[pg,""];
+  document.getElementById("tb-t").textContent=t;
+  document.getElementById("tb-s").textContent=s;
+  initSel();
+  ({dashboard:renderDB,stats:renderStats,roster:renderRoster,leave:renderLeave,journal:()=>rAct("journal"),seminar:()=>rAct("seminar"),research:()=>rAct("research"),other:()=>rAct("other"),import:renderImport})[pg]?.();
+}
+
+function renderActive(){
+  const pg=document.querySelector(".ni.on")?.dataset.pg;
+  if(!pg)return;
+  ({dashboard:renderDB,stats:renderStats,roster:renderRoster,leave:renderLeave,journal:()=>rAct("journal"),seminar:()=>rAct("seminar"),research:()=>rAct("research"),other:()=>rAct("other"),import:renderImport})[pg]?.();
+}
+
+// ══════════════════════════════════════════
+// INIT SELECTS
+// ══════════════════════════════════════════
+function initSel(){
+  const yrs=getYrs();
+  ["gYear","ry","ly","jy","sy","rey","oy","sty"].forEach(id=>{
+    const el=document.getElementById(id);if(!el)return;
+    const cur=el.value,hasAll=id!=="ry";
+    el.innerHTML=(hasAll?'<option value="all">All years</option>':'')+yrs.map(y=>`<option value="${y}">${y}</option>`).join("");
+    if([...el.options].find(o=>o.value===cur))el.value=cur;
+  });
+  const rEl=document.getElementById("rst");
+  if(rEl)rEl.innerHTML='<option value="all">All stations</option>'+getStns().map(s=>`<option value="${s}">${s}</option>`).join("");
+  document.getElementById("dl-d").innerHTML=getDocs().map(d=>`<option value="${d}">`).join("");
+  document.getElementById("dl-s").innerHTML=getStns().map(s=>`<option value="${s}">`).join("");
+  const ic=document.getElementById("imp-ct");if(ic)ic.textContent=`(${DB.posts.length} records)`;
+}
+
+// ══════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════
+let cStn=null;
+function renderDB(){
+  const gy=GY();
+  const posts=gy==="all"?DB.posts:DB.posts.filter(p=>p.year===gy);
+  const acts=gy==="all"?DB.acts:DB.acts.filter(a=>(a.year||a.date?.slice(0,4))===gy);
+  const docs=new Set(posts.map(p=>p.doctor)).size;
+  const signed=posts.filter(p=>p.rs==="completed").length;
+  const onLv=DB.leave.filter(l=>leaveStatus(l)==="active").length;
+  document.getElementById("db-mc").innerHTML=`
+    <div class="mc dk"><div class="mc-lb">Resident Doctors</div><div class="mc-v">${docs}</div><div class="mc-s">In roster</div></div>
+    <div class="mc"><div class="mc-lb">Postings</div><div class="mc-v">${posts.length}</div><div class="mc-s">${gy==="all"?"All years":gy}</div></div>
+    <div class="mc"><div class="mc-lb">Reports Signed</div><div class="mc-v">${signed}</div><div class="mc-s">${posts.length?Math.round(signed/posts.length*100):0}% of postings</div></div>
+    <div class="mc"><div class="mc-lb">Currently on Leave</div><div class="mc-v">${onLv}</div><div class="mc-s">of ${DB.leave.length} scheduled</div></div>
+    <div class="mc"><div class="mc-lb">Activities Logged</div><div class="mc-v">${acts.length}</div><div class="mc-s">All modules</div></div>
+  `;
+  const stMap={};
+  for(const p of posts){const k=p.station.split("/")[0].trim().toUpperCase()||"OTHER";stMap[k]=(stMap[k]||0)+1;}
+  const stL=Object.keys(stMap).sort((a,b)=>stMap[b]-stMap[a]).slice(0,10);
+  const pal=["#14532D","#1E3A8A","#4C1D95","#78350F","#166534","#6B7280","#881337","#991B1B","#075985","#374151"];
+  if(cStn)cStn.destroy();
+  cStn=new Chart(document.getElementById("c-stn"),{
+    type:"doughnut",
+    data:{labels:stL,datasets:[{data:stL.map(l=>stMap[l]),backgroundColor:pal,borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"right",labels:{font:{size:11},boxWidth:10}}}}
+  });
+  const cats=[{k:"journal",lb:"Journal presentations"},{k:"seminar",lb:"Seminars"},{k:"research",lb:"Research/Pubs"},{k:"other",lb:"Other activities"}];
+  document.getElementById("db-comp").innerHTML=cats.map(c=>{
+    const all=acts.filter(a=>a.kind===c.k);
+    const done=all.filter(a=>["Completed","Published"].includes(a.status)).length;
+    const pct=all.length?Math.round(done/all.length*100):0;
+    return`<div style="margin-bottom:13px;"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px;"><span style="font-weight:500;">${c.lb}</span><span style="color:var(--tx3);">${done}/${all.length} · ${pct}%</span></div><div class="pbw"><div class="pb" style="width:${pct}%;"></div></div></div>`;
+  }).join("");
+  const rec=[...acts].sort((a,b)=>(b.date||"").localeCompare(a.date||"")).slice(0,8);
+  document.getElementById("db-rec").innerHTML=rec.length?rec.map(a=>`
+    <tr><td style="font-weight:600;">${a.doctor}</td>
+    <td><span class="badge b-sl">${{journal:"Journal",seminar:"Seminar",research:"Research",other:"Other"}[a.kind]||a.kind}</span></td>
+    <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${a.title}">${a.title}</td>
+    <td style="font-family:'DM Mono';font-size:12px;white-space:nowrap;">${fmtD(a.date)}</td>
+    <td><span class="badge ${actBadge(a.status)}">${a.status}</span></td></tr>`).join(""):`<tr><td colspan="5" class="empty" style="text-align:center;">No activities yet</td></tr>`;
+}
+
+// ══════════════════════════════════════════
+// ROSTER
+// ══════════════════════════════════════════
+function renderRoster(){
+  const yr=document.getElementById("ry")?.value||"all",mo=document.getElementById("rm")?.value||"all",
+    st=document.getElementById("rst")?.value||"all",rs=document.getElementById("rrs")?.value||"all",
+    q=(document.getElementById("rq")?.value||"").toLowerCase();
+  let data=DB.posts;
+  if(yr!=="all")data=data.filter(p=>p.year===yr);
+  if(mo!=="all")data=data.filter(p=>p.month===mo);
+  if(st!=="all")data=data.filter(p=>p.station.toUpperCase().includes(st));
+  if(rs!=="all")data=data.filter(p=>p.rs===rs);
+  if(q)data=data.filter(p=>p.doctor.toLowerCase().includes(q));
+  // month dropdown
+  const mEl=document.getElementById("rm");
+  if(mEl){
+    const usedM=[...new Set((yr==="all"?DB.posts:DB.posts.filter(p=>p.year===yr)).map(p=>p.month))];
+    const ordM=MONTHS.filter(m=>usedM.includes(m));
+    const cur=mEl.value;
+    mEl.innerHTML='<option value="all">All months</option>'+ordM.map(m=>`<option>${m}</option>`).join("");
+    if(ordM.includes(cur))mEl.value=cur;
+  }
+  const docs=[...new Set(data.map(p=>p.doctor))].sort();
+  const months=[...new Set(data.map(p=>p.month))];
+  const ordM=MONTHS.filter(m=>months.includes(m));
+  document.getElementById("r-ct").textContent=`${docs.length} doctors · ${data.length} entries`;
+  const th=document.getElementById("r-th"),tb=document.getElementById("r-tb");
+  if(!data.length){th.innerHTML="";tb.innerHTML=`<tr><td colspan="6" style="padding:32px;text-align:center;color:var(--tx3);">No records match filters</td></tr>`;return;}
+  th.innerHTML=`<tr><th>Doctor</th>${ordM.map(m=>`<th>${m}</th>`).join("")}<th>Report status</th><th></th></tr>`;
+  tb.innerHTML=docs.map(doc=>{
+    const de=data.filter(p=>p.doctor===doc);
+    const byM={};for(const e of de)byM[e.month]=e;
+    const allSigned=de.every(e=>e.rs==="completed");
+    const anySigned=de.some(e=>e.rs==="completed");
+    const lastId=de[de.length-1]?.id||"";
+    return`<tr>
+      <td style="font-weight:600;white-space:nowrap;">${doc}</td>
+      ${ordM.map(m=>{const e=byM[m];return e?`<td><span class="badge ${stBadge(e.station)}">${e.station}</span></td>`:`<td style="color:var(--tx3);font-size:12px;">—</td>`;}).join("")}
+      <td>${allSigned?`<span class="badge b-gn">${dot(true)} Signed</span>`:anySigned?`<span class="badge b-am">${dot(true,'da')} Partial</span>`:`<span class="badge b-rd">${dot(false)} Pending</span>`}</td>
+      <td><button class="btn btn-s btn-sm" onclick="editPost('${lastId}')">Edit</button></td></tr>`;
+  }).join("");
+}
+
+// ══════════════════════════════════════════
+// LEAVE
+// ══════════════════════════════════════════
+function renderLeave(){
+  const yr=document.getElementById("ly")?.value||"all",ty=document.getElementById("lt")?.value||"all",
+    sf=document.getElementById("ls")?.value||"all",q=(document.getElementById("lq")?.value||"").toLowerCase();
+  let data=DB.leave;
+  if(yr!=="all")data=data.filter(l=>l.start.startsWith(yr));
+  if(ty!=="all")data=data.filter(l=>l.type===ty);
+  if(sf!=="all")data=data.filter(l=>leaveStatus(l)===sf);
+  if(q)data=data.filter(l=>l.name.toLowerCase().includes(q)||(l.rel||"").toLowerCase().includes(q));
+  document.getElementById("l-ct").textContent=`${data.length} records`;
+  const lvTypeBadge={"Annual leave":"b-gn","Exam leave":"b-am","Maternity leave":"b-ro","Sick leave":"b-rd","Study leave":"b-bl"};
+  const lvStatusBadge={active:`<span class="badge b-rd">${dot(true)} On leave</span>`,upcoming:`<span class="badge b-am">${dot(true,'da')} Upcoming</span>`,past:`<span class="badge b-gy">${dot(false)} Completed</span>`};
+  const tb=document.getElementById("l-tb");
+  tb.innerHTML=data.length?data.map((l,i)=>`<tr>
+    <td style="color:var(--tx3);font-size:12px;">${i+1}</td>
+    <td style="font-weight:600;white-space:nowrap;">${l.name}</td>
+    <td><span class="badge ${lvTypeBadge[l.type]||"b-gy"}">${l.type}</span></td>
+    <td style="font-family:'DM Mono';font-size:12px;white-space:nowrap;">${fmtD(l.start)}</td>
+    <td style="font-family:'DM Mono';font-size:12px;white-space:nowrap;">${fmtD(l.end)}</td>
+    <td>${l.dur||"—"}</td>
+    <td>${l.rel||"—"}</td>
+    <td>${lvStatusBadge[leaveStatus(l)]||""}</td>
+    <td style="white-space:nowrap;"><button class="btn btn-s btn-sm" style="margin-right:4px;" onclick="editLeave('${l.id}')">Edit</button><button class="btn btn-d btn-sm btn-ic" onclick="delLeave('${l.id}')">✕</button></td>
+  </tr>`).join(""):`<tr><td colspan="9" style="padding:32px;text-align:center;color:var(--tx3);">No leave records match</td></tr>`;
+}
+
+// ══════════════════════════════════════════
+// ACTIVITIES
+// ══════════════════════════════════════════
+const ACFG={
+  journal:{yr:"jy",st:"js",q:"jq",th:"j-th",tb:"j-tb",ct:"j-ct",
+    cols:["#","Doctor","Journal / Topic","Date","Venue","Discussant","Status","Notes",""],
+    row:(a,i)=>`<tr><td style="color:var(--tx3);font-size:12px;">${i+1}</td><td style="font-weight:600;">${a.doctor}</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${a.title}">${a.title}</td><td style="font-family:'DM Mono';font-size:12px;white-space:nowrap;">${fmtD(a.date)}</td><td>${a.venue||"—"}</td><td>${a.extra||"—"}</td><td><span class="badge ${actBadge(a.status)}">${a.status}</span></td><td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tx3);">${a.notes||"—"}</td><td>${aBtns(a.id)}</td></tr>`},
+  seminar:{yr:"sy",st:"ss",q:"sq",th:"s-th",tb:"s-tb",ct:"s-ct",
+    cols:["#","Doctor","Title","Date","Venue","Chairperson","Status","Notes",""],
+    row:(a,i)=>`<tr><td style="color:var(--tx3);font-size:12px;">${i+1}</td><td style="font-weight:600;">${a.doctor}</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${a.title}">${a.title}</td><td style="font-family:'DM Mono';font-size:12px;white-space:nowrap;">${fmtD(a.date)}</td><td>${a.venue||"—"}</td><td>${a.extra||"—"}</td><td><span class="badge ${actBadge(a.status)}">${a.status}</span></td><td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tx3);">${a.notes||"—"}</td><td>${aBtns(a.id)}</td></tr>`},
+  research:{yr:"rey",st:"res",ty:"ret",q:"req",th:"re-th",tb:"re-tb",ct:"re-ct",
+    cols:["#","Doctor","Title / Topic","Type","Year","Journal / Venue","Status","Notes",""],
+    row:(a,i)=>`<tr><td style="color:var(--tx3);font-size:12px;">${i+1}</td><td style="font-weight:600;">${a.doctor}</td><td style="max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${a.title}">${a.title}</td><td><span class="badge b-pu">${a.pubtype||"Research"}</span></td><td>${a.year||a.date?.slice(0,4)||"—"}</td><td>${a.jn||"—"}</td><td><span class="badge ${actBadge(a.status)}">${a.status}</span></td><td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tx3);">${a.notes||"—"}</td><td>${aBtns(a.id)}</td></tr>`},
+  other:{yr:"oy",st:"os",cat:"oc",q:"oq",th:"o-th",tb:"o-tb",ct:"o-ct",
+    cols:["#","Doctor","Activity","Category","Date","Status","Notes",""],
+    row:(a,i)=>`<tr><td style="color:var(--tx3);font-size:12px;">${i+1}</td><td style="font-weight:600;">${a.doctor}</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${a.title}">${a.title}</td><td><span class="badge b-tl">${a.category||"—"}</span></td><td style="font-family:'DM Mono';font-size:12px;white-space:nowrap;">${fmtD(a.date)}</td><td><span class="badge ${actBadge(a.status)}">${a.status}</span></td><td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tx3);">${a.notes||"—"}</td><td>${aBtns(a.id)}</td></tr>`}
+};
+function aBtns(id){return`<div style="display:flex;gap:3px;"><button class="btn btn-s btn-sm btn-ic" onclick="editAct('${id}')" title="Edit">✎</button><button class="btn btn-d btn-sm btn-ic" onclick="delAct('${id}')" title="Delete">✕</button></div>`;}
+
+function rAct(kind){
+  const c=ACFG[kind];
+  const yr=(document.getElementById(c.yr)||{}).value||"all";
+  const st=(document.getElementById(c.st)||{}).value||"all";
+  const ty=c.ty?(document.getElementById(c.ty)||{}).value||"all":"all";
+  const cat=c.cat?(document.getElementById(c.cat)||{}).value||"all":"all";
+  const q=((document.getElementById(c.q)||{}).value||"").toLowerCase();
+  let data=DB.acts.filter(a=>a.kind===kind);
+  if(yr!=="all")data=data.filter(a=>(a.year||a.date?.slice(0,4))===yr);
+  if(st!=="all")data=data.filter(a=>a.status===st);
+  if(ty!=="all")data=data.filter(a=>a.pubtype===ty);
+  if(cat!=="all")data=data.filter(a=>a.category===cat);
+  if(q)data=data.filter(a=>a.doctor.toLowerCase().includes(q)||a.title.toLowerCase().includes(q));
+  data.sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  const ctEl=document.getElementById(c.ct);if(ctEl)ctEl.textContent=`${data.length} records`;
+  const thEl=document.getElementById(c.th);if(thEl)thEl.innerHTML=`<tr>${c.cols.map(x=>`<th>${x}</th>`).join("")}</tr>`;
+  const tbEl=document.getElementById(c.tb);if(tbEl)tbEl.innerHTML=data.length?data.map(c.row).join(""):`<tr><td colspan="${c.cols.length}" style="padding:36px;text-align:center;color:var(--tx3);">No records — click <strong>+ Activity</strong> to add</td></tr>`;
+}
+
+// ══════════════════════════════════════════
+// IMPORT PAGE — multi-type
+// ══════════════════════════════════════════
+let impType="roster";
+let pending=[];
+
+const IMP_CFG={
+  roster:{
+    title:"Upload Duty Roster CSV",
+    hint:"<code>DOCTOR, MONTH, YEAR, STATION</code>",
+    guide:[["DOCTOR","ADEBANJO","Required"],["MONTH","January","Required"],["YEAR","2026","Required"],["STATION","CHEST","Required"],["REPORT_STATUS","completed / pending","Optional"],["CONSULTANT","Dr. Smith","Optional"]],
+    tplRows:["DOCTOR,MONTH,YEAR,STATION,REPORT_STATUS,CONSULTANT","ADEBANJO,January,2026,CHEST,pending,","BASHIR,February,2026,STAFF,completed,Dr. Smith"],
+    tplName:"roster_template.csv",
+    recTitle:"Posting records",
+    thead:"<tr><th>Doctor</th><th>Month</th><th>Year</th><th>Station</th><th>Report</th><th></th></tr>",
+    rowFn:(r)=>`<tr><td style="font-weight:600;">${r.doctor}</td><td>${r.month}</td><td>${r.year}</td><td><span class="badge ${stBadge(r.station)}">${r.station}</span></td><td>${r.rs==="completed"?'<span class="badge b-gn">Signed</span>':'<span class="badge b-rd">Pending</span>'}</td><td><button class="btn btn-d btn-sm btn-ic" onclick="delPost('${r.id}')">✕</button></td></tr>`,
+    parse:(lines,hdrs)=>{
+      const iD=fi(hdrs,"DOCTOR"),iM=fi(hdrs,"MONTH"),iY=fi(hdrs,"YEAR"),iS=fi(hdrs,"STATION"),iR=fi(hdrs,"REPORT"),iC=fi(hdrs,"CONSULTANT");
+      if([iD,iM,iY,iS].some(i=>i<0))return null;
+      return lines.slice(1).map(l=>{const c=splitCSV(l);return{id:uid(),doctor:c[iD]?.toUpperCase()||"",month:c[iM]||"",year:c[iY]||"",station:(c[iS]||"").toUpperCase(),rs:c[iR]?.toLowerCase()||"pending",con:c[iC]||"",notes:""};}).filter(r=>r.doctor);
+    },
+    commit:(rows)=>{DB.posts=[...DB.posts,...rows];},
+    getData:()=>[...DB.posts].reverse().slice(0,120)
+  },
+  leave:{
+    title:"Upload Leave Schedule CSV",
+    hint:"<code>NAME, TYPE, START, END, DURATION, RELIEVER</code>",
+    guide:[["NAME","Dr. Adebanjo R. A.","Required"],["TYPE","Annual leave","Required"],["START","2026-03-02","Required (YYYY-MM-DD)"],["END","2026-03-30","Required"],["DURATION","4 weeks","Optional"],["RELIEVER","Dr. Jeje","Optional"]],
+    tplRows:["NAME,TYPE,START,END,DURATION,RELIEVER","Dr. Adebanjo R. A.,Annual leave,2026-03-02,2026-03-30,4 weeks,Dr. Jeje","Dr. Bashir K.,Exam leave,2026-04-01,2026-04-10,7 working days,Dr. Adepoju"],
+    tplName:"leave_template.csv",
+    recTitle:"Leave records",
+    thead:"<tr><th>Doctor</th><th>Type</th><th>Start</th><th>End</th><th>Reliever</th><th></th></tr>",
+    rowFn:(r)=>`<tr><td style="font-weight:600;">${r.name}</td><td><span class="badge b-gn">${r.type}</span></td><td>${fmtD(r.start)}</td><td>${fmtD(r.end)}</td><td>${r.rel||"—"}</td><td><button class="btn btn-d btn-sm btn-ic" onclick="delLeave('${r.id}')">✕</button></td></tr>`,
+    parse:(lines,hdrs)=>{
+      const iN=fi(hdrs,"NAME"),iT=fi(hdrs,"TYPE"),iS=fi(hdrs,"START"),iE=fi(hdrs,"END"),iD=fi(hdrs,"DUR"),iR=fi(hdrs,"RELIEV");
+      if([iN,iT,iS,iE].some(i=>i<0))return null;
+      return lines.slice(1).map(l=>{const c=splitCSV(l);return{id:uid(),name:c[iN]||"",type:c[iT]||"Annual leave",start:c[iS]||"",end:c[iE]||"",dur:c[iD]||"",rel:c[iR]||"",notes:""};}).filter(r=>r.name&&r.start);
+    },
+    commit:(rows)=>{DB.leave=[...DB.leave,...rows];},
+    getData:()=>[...DB.leave].reverse().slice(0,80)
+  },
+  journal:{
+    title:"Upload Journal Presentations CSV",
+    hint:"<code>DOCTOR, TITLE, DATE, VENUE, DISCUSSANT, STATUS</code>",
+    guide:[["DOCTOR","ADEBANJO","Required"],["TITLE","Topic of journal","Required"],["DATE","2026-02-05","Required"],["YEAR","2026","Optional (auto from date)"],["VENUE","Conference room","Optional"],["DISCUSSANT","DR. EMECHEBE","Optional"],["STATUS","Completed / Scheduled / Missed","Optional"]],
+    tplRows:["DOCTOR,TITLE,DATE,YEAR,VENUE,DISCUSSANT,STATUS,NOTES","ADEBANJO,Epidemiology of NCDs,2026-02-05,2026,Dept. Conference Room,EMECHEBE,Completed,","BASHIR,Maternal Mortality Review,2026-03-10,2026,Lecture Hall,ADEPOJU,Scheduled,"],
+    tplName:"journal_template.csv",
+    recTitle:"Journal presentations",
+    thead:"<tr><th>Doctor</th><th>Title</th><th>Date</th><th>Status</th><th></th></tr>",
+    rowFn:(r)=>`<tr><td style="font-weight:600;">${r.doctor}</td><td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.title}</td><td style="font-size:12px;">${fmtD(r.date)}</td><td><span class="badge ${actBadge(r.status)}">${r.status}</span></td><td><button class="btn btn-d btn-sm btn-ic" onclick="delAct('${r.id}')">✕</button></td></tr>`,
+    parse:(lines,hdrs)=>{
+      const iD=fi(hdrs,"DOCTOR"),iT=fi(hdrs,"TITLE"),iDt=fi(hdrs,"DATE"),iY=fi(hdrs,"YEAR"),iV=fi(hdrs,"VENUE"),iEx=fi(hdrs,"DISC"),iS=fi(hdrs,"STATUS"),iN=fi(hdrs,"NOTE");
+      if([iD,iT].some(i=>i<0))return null;
+      return lines.slice(1).map(l=>{const c=splitCSV(l);const dt=c[iDt]||"";return{id:uid(),kind:"journal",doctor:(c[iD]||"").toUpperCase(),title:c[iT]||"",date:dt,year:c[iY]||dt.slice(0,4)||"",venue:c[iV]||"",extra:c[iEx]||"",status:c[iS]||"Scheduled",notes:c[iN]||"",pubtype:"",jn:"",category:""};}).filter(r=>r.doctor&&r.title);
+    },
+    commit:(rows)=>{DB.acts=[...DB.acts,...rows];},
+    getData:()=>DB.acts.filter(a=>a.kind==="journal").slice(-80).reverse()
+  },
+  seminar:{
+    title:"Upload Seminar Presentations CSV",
+    hint:"<code>DOCTOR, TITLE, DATE, VENUE, CHAIRPERSON, STATUS</code>",
+    guide:[["DOCTOR","SONOIKI","Required"],["TITLE","Seminar title","Required"],["DATE","2026-01-22","Required"],["VENUE","Lecture Theatre 2","Optional"],["CHAIRPERSON","Prof. Omotayo","Optional"],["STATUS","Completed / Scheduled / Missed","Optional"]],
+    tplRows:["DOCTOR,TITLE,DATE,YEAR,VENUE,CHAIRPERSON,STATUS,NOTES","SONOIKI,Community Diagnosis Principles,2026-01-22,2026,Lecture Theatre 2,Prof. Omotayo,Completed,","OGUNYEMI,Health Systems Strengthening,2026-03-12,2026,Lecture Theatre 1,HOD,Scheduled,"],
+    tplName:"seminar_template.csv",
+    recTitle:"Seminar presentations",
+    thead:"<tr><th>Doctor</th><th>Title</th><th>Date</th><th>Status</th><th></th></tr>",
+    rowFn:(r)=>`<tr><td style="font-weight:600;">${r.doctor}</td><td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.title}</td><td style="font-size:12px;">${fmtD(r.date)}</td><td><span class="badge ${actBadge(r.status)}">${r.status}</span></td><td><button class="btn btn-d btn-sm btn-ic" onclick="delAct('${r.id}')">✕</button></td></tr>`,
+    parse:(lines,hdrs)=>{
+      const iD=fi(hdrs,"DOCTOR"),iT=fi(hdrs,"TITLE"),iDt=fi(hdrs,"DATE"),iY=fi(hdrs,"YEAR"),iV=fi(hdrs,"VENUE"),iEx=fi(hdrs,"CHAIR"),iS=fi(hdrs,"STATUS"),iN=fi(hdrs,"NOTE");
+      if([iD,iT].some(i=>i<0))return null;
+      return lines.slice(1).map(l=>{const c=splitCSV(l);const dt=c[iDt]||"";return{id:uid(),kind:"seminar",doctor:(c[iD]||"").toUpperCase(),title:c[iT]||"",date:dt,year:c[iY]||dt.slice(0,4)||"",venue:c[iV]||"",extra:c[iEx]||"",status:c[iS]||"Scheduled",notes:c[iN]||"",pubtype:"",jn:"",category:""};}).filter(r=>r.doctor&&r.title);
+    },
+    commit:(rows)=>{DB.acts=[...DB.acts,...rows];},
+    getData:()=>DB.acts.filter(a=>a.kind==="seminar").slice(-80).reverse()
+  },
+  research:{
+    title:"Upload Research & Publications CSV",
+    hint:"<code>DOCTOR, TITLE, TYPE, JOURNAL, STATUS, YEAR</code>",
+    guide:[["DOCTOR","EMECHEBE","Required"],["TITLE","Title of publication","Required"],["TYPE","Research project / Journal publication / Conference paper","Optional"],["JOURNAL","Nigerian Journal of Medicine","Optional"],["STATUS","In progress / Submitted / Published","Optional"],["YEAR","2026","Optional"],["DATE","2025-11-01","Optional"]],
+    tplRows:["DOCTOR,TITLE,DATE,YEAR,TYPE,JOURNAL,STATUS,NOTES","EMECHEBE,Prevalence of Hypertension in Rural Communities,2025-11-01,2025,Research project,Nigerian Journal of Medicine,Published,Vol 34","ADEBANJO,Childhood Immunisation Knowledge Study,2026-01-15,2026,Journal publication,West African Journal of Medicine,Submitted,Under review"],
+    tplName:"research_template.csv",
+    recTitle:"Research & publications",
+    thead:"<tr><th>Doctor</th><th>Title</th><th>Type</th><th>Status</th><th></th></tr>",
+    rowFn:(r)=>`<tr><td style="font-weight:600;">${r.doctor}</td><td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.title}</td><td><span class="badge b-pu">${r.pubtype||"Research"}</span></td><td><span class="badge ${actBadge(r.status)}">${r.status}</span></td><td><button class="btn btn-d btn-sm btn-ic" onclick="delAct('${r.id}')">✕</button></td></tr>`,
+    parse:(lines,hdrs)=>{
+      const iD=fi(hdrs,"DOCTOR"),iT=fi(hdrs,"TITLE"),iDt=fi(hdrs,"DATE"),iY=fi(hdrs,"YEAR"),iPt=fi(hdrs,"TYPE"),iJ=fi(hdrs,"JOUR"),iS=fi(hdrs,"STATUS"),iN=fi(hdrs,"NOTE");
+      if([iD,iT].some(i=>i<0))return null;
+      return lines.slice(1).map(l=>{const c=splitCSV(l);const dt=c[iDt]||"";return{id:uid(),kind:"research",doctor:(c[iD]||"").toUpperCase(),title:c[iT]||"",date:dt,year:c[iY]||dt.slice(0,4)||"",pubtype:c[iPt]||"Research project",jn:c[iJ]||"",status:c[iS]||"In progress",notes:c[iN]||"",venue:"",extra:"",category:""};}).filter(r=>r.doctor&&r.title);
+    },
+    commit:(rows)=>{DB.acts=[...DB.acts,...rows];},
+    getData:()=>DB.acts.filter(a=>a.kind==="research").slice(-80).reverse()
+  },
+  other:{
+    title:"Upload Other Activities CSV",
+    hint:"<code>DOCTOR, TITLE, CATEGORY, DATE, STATUS</code>",
+    guide:[["DOCTOR","DUROJAIYE","Required"],["TITLE","Activity description","Required"],["CATEGORY","Clinical audit / Community outreach / CME / Training","Optional"],["DATE","2026-02-10","Optional"],["STATUS","Planned / Ongoing / Completed","Optional"]],
+    tplRows:["DOCTOR,TITLE,DATE,YEAR,CATEGORY,STATUS,NOTES","DUROJAIYE,Immunisation Outreach Agege,2026-02-10,2026,Community outreach,Completed,240 children","ANIFOWOSE,Quality Improvement Audit,2026-03-01,2026,Clinical audit,Ongoing,"],
+    tplName:"other_activities_template.csv",
+    recTitle:"Other activities",
+    thead:"<tr><th>Doctor</th><th>Activity</th><th>Category</th><th>Status</th><th></th></tr>",
+    rowFn:(r)=>`<tr><td style="font-weight:600;">${r.doctor}</td><td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.title}</td><td><span class="badge b-tl">${r.category||"Other"}</span></td><td><span class="badge ${actBadge(r.status)}">${r.status}</span></td><td><button class="btn btn-d btn-sm btn-ic" onclick="delAct('${r.id}')">✕</button></td></tr>`,
+    parse:(lines,hdrs)=>{
+      const iD=fi(hdrs,"DOCTOR"),iT=fi(hdrs,"TITLE"),iDt=fi(hdrs,"DATE"),iY=fi(hdrs,"YEAR"),iCat=fi(hdrs,"CAT"),iS=fi(hdrs,"STATUS"),iN=fi(hdrs,"NOTE");
+      if([iD,iT].some(i=>i<0))return null;
+      return lines.slice(1).map(l=>{const c=splitCSV(l);const dt=c[iDt]||"";return{id:uid(),kind:"other",doctor:(c[iD]||"").toUpperCase(),title:c[iT]||"",date:dt,year:c[iY]||dt.slice(0,4)||"",category:c[iCat]||"Other",status:c[iS]||"Planned",notes:c[iN]||"",pubtype:"",jn:"",venue:"",extra:""};}).filter(r=>r.doctor&&r.title);
+    },
+    commit:(rows)=>{DB.acts=[...DB.acts,...rows];},
+    getData:()=>DB.acts.filter(a=>a.kind==="other").slice(-80).reverse()
+  }
+};
+
+// helper: find header index (partial match)
+function fi(hdrs,key){return hdrs.findIndex(h=>h.includes(key));}
+function splitCSV(line){const r=[];let cur="",inQ=false;for(const ch of line+","){if(ch==='"')inQ=!inQ;else if(ch===","&&!inQ){r.push(cur.trim());cur="";}else cur+=ch;}return r;}
+
+function setImpType(type,btn){
+  impType=type;
+  document.querySelectorAll("#imp-tabs .btn").forEach(b=>{b.className="btn btn-s btn-sm";});
+  if(btn)btn.className="btn btn-p btn-sm";
+  const cfg=IMP_CFG[type];
+  document.getElementById("imp-title").textContent=cfg.title;
+  document.getElementById("imp-cols-hint").innerHTML=cfg.hint;
+  document.getElementById("imp-rec-title").innerHTML=cfg.recTitle+' <span id="imp-ct" style="font-size:12px;font-weight:400;color:var(--tx3);"></span>';
+  document.getElementById("imp-guide").innerHTML=`<p style="font-size:12px;color:var(--tx2);margin-bottom:9px;">CSV columns for this import:</p>
+    <table style="font-size:12px;"><thead><tr><th>Column</th><th>Example</th><th>Required</th></tr></thead>
+    <tbody>${cfg.guide.map(([col,ex,req])=>`<tr><td><code style="font-family:'DM Mono';">${col}</code></td><td>${ex}</td><td>${req.includes("Required")?'<span class="badge b-gn">Yes</span>':'<span class="badge b-gy">Optional</span>'}</td></tr>`).join("")}</tbody></table>`;
+  cancelImp();
+  renderImpRecords();
+}
+
+function renderImport(){
+  setImpType(impType, document.getElementById("itab-"+impType));
+}
+
+function renderImpRecords(){
+  const cfg=IMP_CFG[impType];
+  const data=cfg.getData();
+  const ct=document.getElementById("imp-ct");if(ct)ct.textContent=`(${data.length} records)`;
+  const th=document.getElementById("imp-rec-th");if(th)th.innerHTML=cfg.thead;
+  const tb=document.getElementById("imp-tb");
+  if(tb)tb.innerHTML=data.length?data.map(cfg.rowFn).join(""):`<tr><td colspan="6" style="padding:24px;text-align:center;color:var(--tx3);">No records yet</td></tr>`;
+}
+
+function hFile(f){if(!f)return;const r=new FileReader();r.onload=e=>parseCSV(e.target.result);r.readAsText(f);}
+function hDrop(e){e.preventDefault();document.getElementById("dz").classList.remove("drag");hFile(e.dataTransfer.files[0]);}
+
+function parseCSV(txt){
+  const lines=txt.trim().split("\n").map(l=>l.trim()).filter(Boolean);
+  if(!lines.length){toast("Empty file","err");return;}
+  const hdrs=splitCSV(lines[0]).map(h=>h.replace(/"/g,"").trim().toUpperCase());
+  const cfg=IMP_CFG[impType];
+  const rows=cfg.parse(lines,hdrs);
+  if(rows===null){toast("Missing required columns — check the format guide","err");return;}
+  if(!rows.length){toast("No valid rows found","err");return;}
+  pending=rows;
+  const pv=document.getElementById("up-pv");pv.style.display="block";
+  const previewCols=cfg.thead.match(/<th>(.*?)<\/th>/g)?.map(m=>m.replace(/<\/?th>/g,"")).slice(0,-1)||[];
+  pv.innerHTML=`<strong style="color:var(--gm);">${rows.length} records found</strong>
+    <div style="overflow:auto;max-height:160px;margin-top:8px;"><table style="font-size:11.5px;">
+    <thead><tr>${previewCols.map(c=>`<th>${c}</th>`).join("")}</tr></thead>
+    <tbody>${rows.slice(0,8).map(cfg.rowFn).join("")}
+    ${rows.length>8?`<tr><td colspan="${previewCols.length}" style="text-align:center;color:var(--tx3);">…and ${rows.length-8} more</td></tr>`:""}</tbody></table></div>`;
+  const ua=document.getElementById("up-ac");ua.style.display="flex";
+}
+
+async function doImport(){
+  if(!pending.length)return;
+  IMP_CFG[impType].commit(pending);
+  // Map to correct Supabase table rows
+  const tableMap={roster:"postings",leave:"leave_records",journal:"activities",seminar:"activities",research:"activities",other:"activities"};
+  const rowMap={
+    roster:rows=>rows.map(postToRow),
+    leave:rows=>rows.map(leaveToRow),
+    journal:rows=>rows.map(actToRow),seminar:rows=>rows.map(actToRow),
+    research:rows=>rows.map(actToRow),other:rows=>rows.map(actToRow)
+  };
+  try{
+    await bulkInsert(tableMap[impType], rowMap[impType](pending));
+  }catch(e){ /* bulkInsert already shows error toast */ }
+  initSel();renderImpRecords();
+  document.getElementById("up-pv").style.display="none";
+  document.getElementById("up-ac").style.display="none";
+  document.getElementById("fu").value="";
+  toast(`${pending.length} records imported`,"ok");
+  pending=[];
+}
+
+function cancelImp(){
+  pending=[];
+  const pv=document.getElementById("up-pv");if(pv)pv.style.display="none";
+  const ua=document.getElementById("up-ac");if(ua)ua.style.display="none";
+  const fu=document.getElementById("fu");if(fu)fu.value="";
+}
+
+function dlTpl(){
+  const cfg=IMP_CFG[impType];
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([cfg.tplRows.join("\n")+"\n"],{type:"text/csv"}));
+  a.download=cfg.tplName;a.click();
+}
+
+function delPost(id){
+  DB.posts=DB.posts.filter(p=>p.id!==id);
+  save("postings",null,id);renderImpRecords();toast("Removed","ok");
+}
+async function clearActive(){
+  const labels={roster:"all posting",leave:"all leave",journal:"all journal",seminar:"all seminar",research:"all research",other:"all other activity"};
+  if(!confirm(`Delete ${labels[impType]} records?`))return;
+  const tableMap={roster:"postings",leave:"leave_records",journal:"activities",seminar:"activities",research:"activities",other:"activities"};
+  if(!OFFLINE&&SB){
+    setSyncStatus("syncing","Deleting…");
+    try{
+      if(impType==="roster"){ await SB.from("postings").delete().neq("id","__none__"); }
+      else if(impType==="leave"){ await SB.from("leave_records").delete().neq("id","__none__"); }
+      else{ await SB.from("activities").delete().eq("kind",impType); }
+      setSyncStatus("ok","Deleted");
+    }catch(e){setSyncStatus("err","Delete failed");toast("Delete failed: "+e.message,"err");return;}
+  }
+  if(impType==="roster")DB.posts=[];
+  else if(impType==="leave")DB.leave=[];
+  else DB.acts=DB.acts.filter(a=>a.kind!==impType);
+  if(OFFLINE){localStorage.setItem('rmd2_p',JSON.stringify(DB.posts));localStorage.setItem('rmd2_l',JSON.stringify(DB.leave));localStorage.setItem('rmd2_a',JSON.stringify(DB.acts));}
+  renderImpRecords();toast("Cleared","ok");
+}
+function clearAll(){clearActive();}
+
+function xCSV(type){
+  let rows=[],header="";
+  if(type==="postings"){header="DOCTOR,MONTH,YEAR,STATION,REPORT_STATUS,CONSULTANT,NOTES";rows=DB.posts.map(p=>`${p.doctor},${p.month},${p.year},"${p.station}",${p.rs||"pending"},"${p.con||""}","${p.notes||""}"`);}
+  else if(type==="leave"){header="NAME,TYPE,START,END,DURATION,RELIEVER,NOTES";rows=DB.leave.map(l=>`"${l.name}","${l.type}",${l.start},${l.end},"${l.dur||""}","${l.rel||""}","${l.notes||""}"`);}
+  else{header="DOCTOR,TITLE,DATE,YEAR,STATUS,NOTES";rows=DB.acts.filter(a=>a.kind===type).map(a=>`${a.doctor},"${a.title}",${a.date||""},${a.year||""},"${a.status}","${a.notes||""}"`);}
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([[header,...rows].join("\n")],{type:"text/csv"}));a.download=`${type}_export.csv`;a.click();toast("CSV exported","ok");
+}
+
+// ══════════════════════════════════════════
+// MODALS
+// ══════════════════════════════════════════
+const openM=id=>document.getElementById(id).classList.add("on");
+const closeM=id=>document.getElementById(id).classList.remove("on");
+document.querySelectorAll(".ov").forEach(el=>el.addEventListener("click",e=>{if(e.target===el)el.classList.remove("on");}));
+
+// Posting
+function savePost(){
+  const doc=document.getElementById("mp-doc").value.trim().toUpperCase();
+  const mo=document.getElementById("mp-mo").value;
+  const yr=document.getElementById("mp-yr").value.trim();
+  const st=document.getElementById("mp-st").value.trim().toUpperCase();
+  const rs=document.getElementById("mp-rs").value;
+  const con=document.getElementById("mp-con").value.trim();
+  const notes=document.getElementById("mp-nt").value.trim();
+  if(!doc||!mo||!yr||!st){toast("Fill required fields","err");return;}
+  const eid=document.getElementById("mp-id").value;
+  if(eid){const i=DB.posts.findIndex(p=>p.id===eid);if(i>-1)DB.posts[i]={...DB.posts[i],doctor:doc,month:mo,year:yr,station:st,rs,con,notes};}
+  else DB.posts.push({id:uid(),doctor:doc,month:mo,year:yr,station:st,rs,con,notes});
+  const savedPost=DB.posts.find(x=>x.id===(eid||""))||DB.posts[DB.posts.length-1];
+  save("postings", postToRow(savedPost));
+  initSel();closeM("m-post");
+  ["mp-id","mp-doc","mp-yr","mp-st","mp-con","mp-nt"].forEach(id=>document.getElementById(id).value="");
+  toast("Posting saved","ok");renderActive();
+}
+function editPost(id){
+  const p=DB.posts.find(x=>x.id===id);if(!p)return;
+  document.getElementById("mp-id").value=p.id;document.getElementById("mp-doc").value=p.doctor;
+  document.getElementById("mp-mo").value=p.month;document.getElementById("mp-yr").value=p.year;
+  document.getElementById("mp-st").value=p.station;document.getElementById("mp-rs").value=p.rs||"pending";
+  document.getElementById("mp-con").value=p.con||"";document.getElementById("mp-nt").value=p.notes||"";
+  openM("m-post");
+}
+
+// Leave
+function saveLeave(){
+  const name=document.getElementById("ml-doc").value.trim();
+  const start=document.getElementById("ml-s").value,end=document.getElementById("ml-e").value;
+  const dur=document.getElementById("ml-dur").value.trim(),type=document.getElementById("ml-ty").value;
+  const rel=document.getElementById("ml-rel").value.trim(),notes=document.getElementById("ml-nt").value.trim();
+  if(!name||!start||!end){toast("Name, start and end required","err");return;}
+  const eid=document.getElementById("ml-id").value;
+  if(eid){const i=DB.leave.findIndex(l=>l.id===eid);if(i>-1)DB.leave[i]={...DB.leave[i],name,start,end,dur,type,rel,notes};}
+  else DB.leave.push({id:uid(),name,start,end,dur,type,rel,notes});
+  const savedLeave=DB.leave.find(x=>x.id===(eid||""))||DB.leave[DB.leave.length-1];
+  save("leave_records", leaveToRow(savedLeave));
+  initSel();closeM("m-leave");
+  ["ml-id","ml-doc","ml-s","ml-e","ml-dur","ml-rel","ml-nt"].forEach(id=>document.getElementById(id).value="");
+  toast("Leave saved","ok");renderActive();
+}
+function editLeave(id){
+  const l=DB.leave.find(x=>x.id===id);if(!l)return;
+  document.getElementById("ml-id").value=l.id;document.getElementById("ml-doc").value=l.name;
+  document.getElementById("ml-s").value=l.start;document.getElementById("ml-e").value=l.end;
+  document.getElementById("ml-dur").value=l.dur||"";document.getElementById("ml-ty").value=l.type;
+  document.getElementById("ml-rel").value=l.rel||"";document.getElementById("ml-nt").value=l.notes||"";
+  openM("m-leave");
+}
+function delLeave(id){if(!confirm("Delete this leave entry?"))return;DB.leave=DB.leave.filter(l=>l.id!==id);save("leave_records",null,id);renderLeave();toast("Deleted","ok");}
+
+// Activity modal
+function openAct(kind){
+  const pg=document.querySelector(".ni.on")?.dataset.pg;
+  const kindMap={journal:"journal",seminar:"seminar",research:"research",other:"other"};
+  const k=kind||kindMap[pg]||"journal";
+  document.getElementById("ma-kind").value=k;
+  togActF();
+  openM("m-act");
+}
+function togActF(){
+  const k=document.getElementById("ma-kind").value;
+  document.getElementById("f-pres").style.display=(k==="journal"||k==="seminar")?"block":"none";
+  document.getElementById("f-res").style.display=k==="research"?"block":"none";
+  document.getElementById("f-oth").style.display=k==="other"?"block":"none";
+  document.getElementById("ma-xl").textContent=k==="journal"?"Discussant":"Chairperson";
+  const ss=document.getElementById("ma-st");
+  if(k==="research")ss.innerHTML=["In progress","Submitted","Published"].map(s=>`<option>${s}</option>`).join("");
+  else if(k==="other")ss.innerHTML=["Planned","Ongoing","Completed"].map(s=>`<option>${s}</option>`).join("");
+  else ss.innerHTML=["Scheduled","Completed","Missed"].map(s=>`<option>${s}</option>`).join("");
+}
+function saveAct(){
+  const kind=document.getElementById("ma-kind").value;
+  const doctor=document.getElementById("ma-doc").value.trim().toUpperCase();
+  const title=document.getElementById("ma-ti").value.trim();
+  const date=document.getElementById("ma-dt").value;
+  const year=document.getElementById("ma-yr").value.trim()||date?.slice(0,4)||"";
+  const venue=document.getElementById("ma-ve").value.trim();
+  const extra=document.getElementById("ma-ex").value.trim();
+  const pubtype=document.getElementById("ma-pt").value;
+  const jn=document.getElementById("ma-jn").value.trim();
+  const category=document.getElementById("ma-cat").value;
+  const status=document.getElementById("ma-st").value;
+  const notes=document.getElementById("ma-nt").value.trim();
+  if(!doctor||!title){toast("Doctor and title required","err");return;}
+  const rec={id:uid(),kind,doctor,title,date,year,venue,extra,pubtype,jn,category,status,notes};
+  const eid=document.getElementById("ma-id").value;
+  if(eid){const i=DB.acts.findIndex(a=>a.id===eid);if(i>-1)DB.acts[i]={...rec,id:eid};}
+  else DB.acts.push(rec);
+  const savedAct=DB.acts.find(x=>x.id===(eid||""))||DB.acts[DB.acts.length-1];
+  save("activities", actToRow(savedAct));
+  closeM("m-act");
+  ["ma-id","ma-doc","ma-ti","ma-dt","ma-yr","ma-ve","ma-ex","ma-jn","ma-nt"].forEach(id=>document.getElementById(id).value="");
+  toast("Activity saved","ok");renderActive();
+}
+function editAct(id){
+  const a=DB.acts.find(x=>x.id===id);if(!a)return;
+  document.getElementById("ma-id").value=a.id;document.getElementById("ma-kind").value=a.kind;
+  togActF();
+  document.getElementById("ma-doc").value=a.doctor;document.getElementById("ma-ti").value=a.title||"";
+  document.getElementById("ma-dt").value=a.date||"";document.getElementById("ma-yr").value=a.year||"";
+  document.getElementById("ma-ve").value=a.venue||"";document.getElementById("ma-ex").value=a.extra||"";
+  if(a.pubtype)document.getElementById("ma-pt").value=a.pubtype;
+  if(a.jn)document.getElementById("ma-jn").value=a.jn;
+  if(a.category)document.getElementById("ma-cat").value=a.category;
+  document.getElementById("ma-st").value=a.status||"Scheduled";
+  document.getElementById("ma-nt").value=a.notes||"";
+  openM("m-act");
+}
+function delAct(id){if(!confirm("Delete this activity?"))return;DB.acts=DB.acts.filter(a=>a.id!==id);save("activities",null,id);renderActive();toast("Deleted","ok");}
+
+// ══════════════════════════════════════════
+// STATISTICS & PERFORMANCE
+// ══════════════════════════════════════════
+let cActType=null,cSignoff=null,cActSt=null,cDpBar=null;
+
+// Annual targets per doctor
+const TARGETS={signedReports:6,journalPresentations:1,seminarPresentations:1,publications:1,researchProjects:1};
+
+function calcDocStats(yr){
+  const posts=yr==="all"?DB.posts:DB.posts.filter(p=>p.year===yr);
+  const acts=yr==="all"?DB.acts:DB.acts.filter(a=>(a.year||a.date?.slice(0,4))===yr);
+  const allDocs=[...new Set([...posts.map(p=>p.doctor),...acts.map(a=>a.doctor)])].sort();
+  return allDocs.map(doc=>{
+    const dp=posts.filter(p=>p.doctor===doc);
+    const da=acts.filter(a=>a.doctor===doc);
+    const signed=dp.filter(p=>p.rs==="completed").length;
+    const journals=da.filter(a=>a.kind==="journal");
+    const seminars=da.filter(a=>a.kind==="seminar");
+    const research=da.filter(a=>a.kind==="research");
+    const other=da.filter(a=>a.kind==="other");
+    const jDone=journals.filter(a=>a.status==="Completed").length;
+    const sDone=seminars.filter(a=>a.status==="Completed").length;
+    // Publications = published items; research projects = all research entries regardless of status
+    const pubs=research.filter(a=>["Published","Submitted"].includes(a.status)).length;
+    const researchProjects=research.length; // any research involvement counts
+    const oDone=other.filter(a=>a.status==="Completed").length;
+    const totalActs=da.length;
+    const totalDone=jDone+sDone+pubs+oDone;
+    const compRate=totalActs>0?Math.round(totalDone/totalActs*100):0;
+
+    // TARGET ACHIEVEMENT (per-year targets, capped at target value for scoring)
+    const T=TARGETS;
+    const tSign  =Math.min(signed, T.signedReports);
+    const tJourn =Math.min(jDone,  T.journalPresentations);
+    const tSemin =Math.min(sDone,  T.seminarPresentations);
+    const tPub   =Math.min(pubs,   T.publications);
+    const tRes   =Math.min(researchProjects, T.researchProjects);
+
+    // Score: each target domain worth equal 20 points = 100 total
+    const scoreSign  =Math.round((tSign /T.signedReports)*20);
+    const scoreJourn =Math.round((tJourn/T.journalPresentations)*20);
+    const scoreSemin =Math.round((tSemin/T.seminarPresentations)*20);
+    const scorePub   =Math.round((tPub  /T.publications)*20);
+    const scoreRes   =Math.round((tRes  /T.researchProjects)*20);
+    const score=Math.min(100,scoreSign+scoreJourn+scoreSemin+scorePub+scoreRes);
+
+    // Target met flags
+    const metSign  =signed>=T.signedReports;
+    const metJourn =jDone>=T.journalPresentations;
+    const metSemin =sDone>=T.seminarPresentations;
+    const metPub   =pubs>=T.publications;
+    const metRes   =researchProjects>=T.researchProjects;
+    const targetsMet=[metSign,metJourn,metSemin,metPub,metRes].filter(Boolean).length;
+
+    return{doc,dp,signed,journals,seminars,research,other,jDone,sDone,pubs,researchProjects,oDone,
+      totalActs,totalDone,compRate,score,
+      scoreSign,scoreJourn,scoreSemin,scorePub,scoreRes,
+      metSign,metJourn,metSemin,metPub,metRes,targetsMet};
+  });
+}
+
+function renderStats(){
+  const yr=document.getElementById("sty")?.value||"all";
+  const sort=document.getElementById("st-sort")?.value||"score";
+  const q=(document.getElementById("stq")?.value||"").toLowerCase();
+  let stats=calcDocStats(yr);
+  if(q)stats=stats.filter(s=>s.doc.toLowerCase().includes(q));
+  stats.sort((a,b)=>{
+    if(sort==="score")return b.score-a.score;
+    if(sort==="posts")return b.dp.length-a.dp.length;
+    if(sort==="acts")return b.totalActs-a.totalActs;
+    return a.doc.localeCompare(b.doc);
+  });
+
+  const posts=yr==="all"?DB.posts:DB.posts.filter(p=>p.year===yr);
+  const acts=yr==="all"?DB.acts:DB.acts.filter(a=>(a.year||a.date?.slice(0,4))===yr);
+  const signed=posts.filter(p=>p.rs==="completed").length;
+  const totalDone=acts.filter(a=>["Completed","Published","Submitted"].includes(a.status)).length;
+  const avgScore=stats.length?Math.round(stats.reduce((s,d)=>s+d.score,0)/stats.length):0;
+  const topDoc=stats[0];
+  const allTargetsMet=stats.filter(s=>s.targetsMet===5).length;
+  const T=TARGETS;
+
+  document.getElementById("st-mc").innerHTML=`
+    <div class="mc dk"><div class="mc-lb">Doctors tracked</div><div class="mc-v">${stats.length}</div><div class="mc-s">${yr==="all"?"All years":yr}</div></div>
+    <div class="mc"><div class="mc-lb">Avg. performance score</div><div class="mc-v">${avgScore}<span style="font-size:14px;font-weight:400;">/100</span></div><div class="mc-s">vs targets (5 domains)</div></div>
+    <div class="mc"><div class="mc-lb">Reports signed</div><div class="mc-v">${signed}<span style="font-size:13px;font-weight:400;">/${posts.length}</span></div><div class="mc-s">Target: ≥${T.signedReports}/doctor/yr</div></div>
+    <div class="mc"><div class="mc-lb">All targets met</div><div class="mc-v">${allTargetsMet}</div><div class="mc-s">of ${stats.length} doctors</div></div>
+    <div class="mc"><div class="mc-lb">Top performer</div><div class="mc-v" style="font-size:15px;">${topDoc?.doc||"—"}</div><div class="mc-s">Score: ${topDoc?.score||0}/100</div></div>
+  `;
+
+  // Target summary banner
+  const tBanner=document.getElementById("st-targets");
+  if(tBanner) tBanner.innerHTML=`
+    <div style="display:flex;flex-wrap:wrap;gap:8px;">
+      <div style="background:#DBEAFE;border:1px solid #BFDBFE;border-radius:8px;padding:9px 13px;font-size:12px;flex:1;min-width:140px;">
+        <div style="font-weight:700;color:#1E3A8A;font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;">Posting sign-offs</div>
+        <div style="font-size:18px;font-weight:700;color:#1E3A8A;">${T.signedReports} <span style="font-size:12px;font-weight:400;">per year</span></div>
+      </div>
+      <div style="background:#EDE9FE;border:1px solid #DDD6FE;border-radius:8px;padding:9px 13px;font-size:12px;flex:1;min-width:140px;">
+        <div style="font-weight:700;color:#4C1D95;font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;">Journal presentations</div>
+        <div style="font-size:18px;font-weight:700;color:#4C1D95;">${T.journalPresentations} <span style="font-size:12px;font-weight:400;">per year</span></div>
+      </div>
+      <div style="background:#CCFBF1;border:1px solid #99F6E4;border-radius:8px;padding:9px 13px;font-size:12px;flex:1;min-width:140px;">
+        <div style="font-weight:700;color:#134E4A;font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;">Seminar presentations</div>
+        <div style="font-size:18px;font-weight:700;color:#134E4A;">${T.seminarPresentations} <span style="font-size:12px;font-weight:400;">per year</span></div>
+      </div>
+      <div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:8px;padding:9px 13px;font-size:12px;flex:1;min-width:140px;">
+        <div style="font-weight:700;color:#78350F;font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;">Publications</div>
+        <div style="font-size:18px;font-weight:700;color:#78350F;">${T.publications} <span style="font-size:12px;font-weight:400;">per year</span></div>
+      </div>
+      <div style="background:#FCE7F3;border:1px solid #FBCFE8;border-radius:8px;padding:9px 13px;font-size:12px;flex:1;min-width:140px;">
+        <div style="font-weight:700;color:#881337;font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;">Research projects</div>
+        <div style="font-size:18px;font-weight:700;color:#881337;">${T.researchProjects} <span style="font-size:12px;font-weight:400;">per year</span></div>
+      </div>
+    </div>`;
+
+  // Chart 1: Activity by type
+  const typeMap={journal:acts.filter(a=>a.kind==="journal").length,seminar:acts.filter(a=>a.kind==="seminar").length,research:acts.filter(a=>a.kind==="research").length,other:acts.filter(a=>a.kind==="other").length};
+  if(cActType)cActType.destroy();
+  cActType=new Chart(document.getElementById("c-acttype"),{
+    type:"doughnut",
+    data:{labels:["Journal","Seminar","Research","Other"],datasets:[{data:Object.values(typeMap),backgroundColor:["#1E3A8A","#4C1D95","#134E4A","#78350F"],borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"right",labels:{font:{size:11},boxWidth:10}}}}
+  });
+
+  // Chart 2: Sign-off pie
+  const pending=posts.length-signed;
+  if(cSignoff)cSignoff.destroy();
+  cSignoff=new Chart(document.getElementById("c-signoff"),{
+    type:"doughnut",
+    data:{labels:["Signed","Pending"],datasets:[{data:[signed,pending],backgroundColor:["#166534","#DC2626"],borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"right",labels:{font:{size:11},boxWidth:10}}}}
+  });
+
+  // Chart 3: Target achievement per domain (how many doctors met each target)
+  const domLabels=["Sign-offs ≥"+T.signedReports,"Journal ≥"+T.journalPresentations,"Seminar ≥"+T.seminarPresentations,"Publication ≥"+T.publications,"Research ≥"+T.researchProjects];
+  const domMet=[stats.filter(s=>s.metSign).length,stats.filter(s=>s.metJourn).length,stats.filter(s=>s.metSemin).length,stats.filter(s=>s.metPub).length,stats.filter(s=>s.metRes).length];
+  const domMiss=domMet.map(v=>stats.length-v);
+  if(cActSt)cActSt.destroy();
+  cActSt=new Chart(document.getElementById("c-actst"),{
+    type:"bar",
+    data:{
+      labels:domLabels,
+      datasets:[
+        {label:"Target met",data:domMet,backgroundColor:"#166534",borderRadius:4},
+        {label:"Below target",data:domMiss,backgroundColor:"#FCA5A5",borderRadius:4}
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:"bottom",labels:{font:{size:10},boxWidth:10}}},
+      scales:{x:{stacked:true,ticks:{font:{size:9},maxRotation:20}},y:{stacked:true,beginAtZero:true,ticks:{stepSize:1}}}}
+  });
+
+  // Chart 4: Score per doctor horizontal
+  const topStats=[...stats].sort((a,b)=>b.score-a.score).slice(0,15);
+  const barH=Math.max(220,topStats.length*28+60);
+  document.getElementById("c-dpbar-wrap").style.height=barH+"px";
+  if(cDpBar)cDpBar.destroy();
+  cDpBar=new Chart(document.getElementById("c-dpbar"),{
+    type:"bar",
+    data:{
+      labels:topStats.map(s=>s.doc),
+      datasets:[
+        {label:"Sign-offs",data:topStats.map(s=>s.scoreSign),backgroundColor:"#DBEAFE",borderRadius:2},
+        {label:"Journal",data:topStats.map(s=>s.scoreJourn),backgroundColor:"#EDE9FE",borderRadius:2},
+        {label:"Seminar",data:topStats.map(s=>s.scoreSemin),backgroundColor:"#CCFBF1",borderRadius:2},
+        {label:"Publication",data:topStats.map(s=>s.scorePub),backgroundColor:"#FEF3C7",borderRadius:2},
+        {label:"Research",data:topStats.map(s=>s.scoreRes),backgroundColor:"#FCE7F3",borderRadius:2},
+      ]
+    },
+    options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:"bottom",labels:{font:{size:10},boxWidth:10}}},
+      scales:{x:{stacked:true,max:100,ticks:{stepSize:20}},y:{stacked:true,ticks:{font:{size:11}}}}}
+  });
+
+  // Target achievement bars
+  const domData=[
+    {lb:"Signing reports",val:stats.filter(s=>s.metSign).length,total:stats.length,col:"#1E3A8A"},
+    {lb:"Journal pres.",val:stats.filter(s=>s.metJourn).length,total:stats.length,col:"#4C1D95"},
+    {lb:"Seminar pres.",val:stats.filter(s=>s.metSemin).length,total:stats.length,col:"#134E4A"},
+    {lb:"Publications",val:stats.filter(s=>s.metPub).length,total:stats.length,col:"#78350F"},
+    {lb:"Research proj.",val:stats.filter(s=>s.metRes).length,total:stats.length,col:"#881337"},
+  ];
+  document.getElementById("st-comprates").innerHTML=domData.map(d=>{
+    const pct=d.total>0?Math.round(d.val/d.total*100):0;
+    return`<div class="perf-bar-row">
+      <span class="perf-bar-label" style="font-size:11px;">${d.lb}</span>
+      <div class="perf-bar-wrap"><div class="perf-bar" style="width:${pct}%;background:${d.col};"></div></div>
+      <span class="perf-bar-val" style="color:${d.col};">${d.val}/${d.total}</span>
+    </div>`;
+  }).join("")||`<div style="text-align:center;color:var(--tx3);padding:20px;font-size:13px;">No data yet</div>`;
+
+  // Leaderboard
+  const tCell=(met,actual,target,label)=>{
+    const col=met?"#166534":actual>0?"#D97706":"#6B7280";
+    const icon=met?`<span style="color:#166534;font-size:12px;">✓</span>`:`<span style="color:#DC2626;font-size:11px;">✗</span>`;
+    return`<td>${icon} <span style="font-weight:600;color:${col};">${actual}</span><span style="color:var(--tx3);font-size:11px;">/${target}</span></td>`;
+  };
+  document.getElementById("st-lb").innerHTML=stats.map((s,i)=>{
+    const rankClass=i===0?"rank-1":i===1?"rank-2":i===2?"rank-3":"rank-n";
+    const scoreColor=s.score>=80?"#166534":s.score>=50?"#D97706":"#DC2626";
+    return`<tr>
+      <td><span class="rank-badge ${rankClass}">${i+1}</span></td>
+      <td style="font-weight:600;">${s.doc}</td>
+      ${tCell(s.metSign,s.signed,T.signedReports)}
+      ${tCell(s.metJourn,s.jDone,T.journalPresentations)}
+      ${tCell(s.metSemin,s.sDone,T.seminarPresentations)}
+      ${tCell(s.metPub,s.pubs,T.publications)}
+      ${tCell(s.metRes,s.researchProjects,T.researchProjects)}
+      <td><span class="badge ${s.targetsMet===5?"b-gn":s.targetsMet>=3?"b-am":"b-rd"}">${s.targetsMet}/5 targets</span></td>
+      <td><span style="font-size:16px;font-weight:700;color:${scoreColor};">${s.score}</span><span style="font-size:11px;color:var(--tx3);">/100</span></td>
+    </tr>`;
+  }).join("")||`<tr><td colspan="9" style="padding:32px;text-align:center;color:var(--tx3);">No data</td></tr>`;
+
+  // Doctor cards
+  document.getElementById("st-cards").innerHTML=stats.map(s=>{
+    const scoreColor=s.score>=80?"#166534":s.score>=50?"#D97706":"#DC2626";
+    const r=22,circ=2*Math.PI*r,dash=(circ*(s.score/100)).toFixed(1),gap=circ.toFixed(1),off=(circ/4).toFixed(1);
+    const domains=[
+      {lb:"Sign-offs",val:s.signed,tgt:T.signedReports,met:s.metSign,col:"#1E3A8A"},
+      {lb:"Journal",val:s.jDone,tgt:T.journalPresentations,met:s.metJourn,col:"#4C1D95"},
+      {lb:"Seminar",val:s.sDone,tgt:T.seminarPresentations,met:s.metSemin,col:"#134E4A"},
+      {lb:"Publication",val:s.pubs,tgt:T.publications,met:s.metPub,col:"#78350F"},
+      {lb:"Research",val:s.researchProjects,tgt:T.researchProjects,met:s.metRes,col:"#881337"},
+    ];
+    return`<div class="doc-card">
+      <div class="doc-card-top">
+        <svg class="score-ring" viewBox="0 0 56 56">
+          <circle cx="28" cy="28" r="${r}" stroke="#EAE7E0" stroke-width="5" fill="none"/>
+          <circle cx="28" cy="28" r="${r}" stroke="${scoreColor}" stroke-width="5" fill="none"
+            stroke-dasharray="${dash} ${gap}" stroke-dashoffset="${off}" transform="rotate(-90 28 28)"/>
+          <text x="28" y="31" text-anchor="middle" font-size="12" font-weight="700" fill="${scoreColor}" font-family="DM Sans,sans-serif">${s.score}</text>
+        </svg>
+        <div style="flex:1;min-width:0;">
+          <div class="doc-name">${s.doc}</div>
+          <div class="doc-role">${s.dp.length} postings · ${s.totalActs} activities</div>
+        </div>
+        <span class="badge ${s.targetsMet===5?"b-gn":s.targetsMet>=3?"b-am":"b-rd"}" style="align-self:flex-start;">${s.targetsMet}/5</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        ${domains.map(d=>{
+          const pct=Math.min(100,Math.round((d.val/d.tgt)*100));
+          return`<div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:10.5px;font-weight:500;min-width:78px;color:var(--tx2);">${d.lb}</span>
+            <div style="flex:1;background:var(--surf2);border-radius:3px;height:6px;overflow:hidden;">
+              <div style="width:${pct}%;height:100%;background:${d.met?"#166534":d.val>0?"#D97706":"#EAE7E0"};border-radius:3px;transition:width .4s;"></div>
+            </div>
+            <span style="font-size:11px;font-weight:600;min-width:36px;text-align:right;color:${d.met?"#166534":d.val>0?"#D97706":"#9CA3AF"};">${d.val}/${d.tgt}</span>
+            <span style="font-size:13px;">${d.met?"✅":"❌"}</span>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>`;
+  }).join("")||`<div style="grid-column:1/-1;text-align:center;padding:32px;color:var(--tx3);">No data</div>`;
+}
+
+function xStatsCSV(){
+  const yr=document.getElementById("sty")?.value||"all";
+  const stats=calcDocStats(yr);
+  const T=TARGETS;
+  const header=`DOCTOR,POSTINGS,SIGNED,TARGET_SIGNED(${T.signedReports}),MET_SIGNED,JOURNALS,J_DONE,TARGET_J(${T.journalPresentations}),MET_J,SEMINARS,S_DONE,TARGET_S(${T.seminarPresentations}),MET_S,RESEARCH_PROJECTS,TARGET_RES(${T.researchProjects}),MET_RES,PUBLICATIONS,TARGET_PUB(${T.publications}),MET_PUB,TARGETS_MET_OF_5,SCORE_/100`;
+  const rows=stats.map(s=>`${s.doc},${s.dp.length},${s.signed},${T.signedReports},${s.metSign?1:0},${s.journals.length},${s.jDone},${T.journalPresentations},${s.metJourn?1:0},${s.seminars.length},${s.sDone},${T.seminarPresentations},${s.metSemin?1:0},${s.researchProjects},${T.researchProjects},${s.metRes?1:0},${s.pubs},${T.publications},${s.metPub?1:0},${s.targetsMet},${s.score}`);
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([[header,...rows].join("\n")],{type:"text/csv"}));a.download=`performance_report_${yr}.csv`;a.click();toast("Performance report exported","ok");
+}
+
+// ══════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════
+function toast(msg,type="ok"){
+  const w=document.getElementById("toasts");
+  const el=document.createElement("div");el.className=`toast ${type}`;
+  el.innerHTML=(type==="ok"?"✓":"✕")+" "+msg;
+  w.appendChild(el);setTimeout(()=>el.remove(),3000);
+}
+
+// ══════════════════════════════════════════
+// BOOT — called after data is loaded
+// ══════════════════════════════════════════
+function bootApp(){
+  initSel();
+  renderDB();
+  togActF();
+}
+
+// ══════════════════════════════════════════
+// INIT — auto-connect if credentials saved
+// ══════════════════════════════════════════
+(async function init(){
+  const cfg=getCfg();
+  if(cfg.url && cfg.key){
+    // Pre-fill config fields in case user wants to change them
+    document.getElementById("cfg-url").value=cfg.url;
+    document.getElementById("cfg-key").value=cfg.key;
+    // Auto-connect
+    try{
+      SB=supabase.createClient(cfg.url,cfg.key);
+      const {error}=await SB.from("postings").select("id").limit(1);
+      if(error)throw error;
+      document.getElementById("sb-setup").classList.add("hidden");
+      await loadAll();
+    }catch(e){
+      // Saved creds failed — show setup screen again
+      document.getElementById("sb-setup").classList.remove("hidden");
+      document.getElementById("cfg-err").style.display="block";
+      document.getElementById("cfg-err").textContent="Auto-connect failed: "+( e.message||"check your credentials");
+    }
+  } else {
+    // No saved creds — show setup screen
+    document.getElementById("sb-setup").classList.remove("hidden");
+  }
+})();
+</script>
+</body>
+</html>
