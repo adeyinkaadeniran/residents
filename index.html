@@ -24,9 +24,10 @@
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;font-size:14px;}
-.app{display:grid;grid-template-columns:250px 1fr;min-height:100vh;}
+.app{min-height:100vh;}
 /* SIDEBAR */
-.sb{background:var(--sl);color:#fff;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow:hidden;}
+.sb{background:var(--sl);color:#fff;display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;width:250px;overflow:hidden;z-index:50;transition:transform .25s cubic-bezier(.4,0,.2,1);}
+.sb.closed{transform:translateX(-250px);}
 .sb-logo{padding:22px 20px 16px;border-bottom:1px solid rgba(255,255,255,.08);}
 .sb-logo .tag{font-size:9px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.38);margin-bottom:5px;}
 .sb-logo h1{font-family:'Lora',serif;font-size:14px;font-weight:600;color:#fff;line-height:1.45;}
@@ -39,12 +40,19 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);min-h
 .ni svg{width:15px;height:15px;flex-shrink:0;opacity:.72;}
 .ni.on svg{opacity:1;}
 .sb-foot{padding:13px 20px;border-top:1px solid rgba(255,255,255,.08);font-size:10px;color:rgba(255,255,255,.28);line-height:1.7;}
-/* MAIN */
-.main{display:flex;flex-direction:column;min-height:100vh;overflow-x:hidden;}
-.topbar{background:var(--surf);border-bottom:1px solid var(--blt);padding:12px 26px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:20;}
-.tb-l h2{font-size:15px;font-weight:600;}
-.tb-l p{font-size:11.5px;color:var(--tx3);margin-top:1px;}
-.tb-r{display:flex;gap:8px;align-items:center;}
+/* SIDEBAR OVERLAY (mobile / when open over content) */
+.sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:49;backdrop-filter:blur(1px);}
+.sb-overlay.show{display:block;}
+/* MAIN — shifts right when sidebar is open */
+.main{display:flex;flex-direction:column;min-height:100vh;overflow-x:hidden;margin-left:250px;transition:margin-left .25s cubic-bezier(.4,0,.2,1);}
+.main.expanded{margin-left:0;}
+/* HAMBURGER BUTTON */
+.hbg{display:flex;flex-direction:column;justify-content:center;gap:5px;width:34px;height:34px;padding:6px;border-radius:8px;cursor:pointer;background:none;border:none;flex-shrink:0;transition:background .15s;}
+.hbg:hover{background:var(--surf2);}
+.hbg span{display:block;height:2px;border-radius:2px;background:var(--tx2);transition:all .22s cubic-bezier(.4,0,.2,1);transform-origin:center;}
+.hbg.open span:nth-child(1){transform:translateY(7px) rotate(45deg);}
+.hbg.open span:nth-child(2){opacity:0;transform:scaleX(0);}
+.hbg.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
 /* BUTTONS */
 .btn{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:8px;font-size:12.5px;font-weight:500;cursor:pointer;border:none;font-family:inherit;transition:all .14s;white-space:nowrap;}
 .btn-p{background:var(--gm);color:#fff;}.btn-p:hover{background:var(--gn);}
@@ -184,7 +192,8 @@ tbody tr:last-child td{border-bottom:none;}
 .leg-item{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--tx2);}
 .leg-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
 /* SYNC + LOAD */
-#sync-bar{position:fixed;bottom:0;left:250px;right:0;height:26px;background:var(--surf);border-top:1px solid var(--blt);display:flex;align-items:center;padding:0 20px;gap:7px;font-size:11px;color:var(--tx3);z-index:15;}
+#sync-bar{position:fixed;bottom:0;left:250px;right:0;height:26px;background:var(--surf);border-top:1px solid var(--blt);display:flex;align-items:center;padding:0 20px;gap:7px;font-size:11px;color:var(--tx3);z-index:15;transition:left .25s cubic-bezier(.4,0,.2,1);}
+#sync-bar.expanded{left:0;}
 .sdot{width:7px;height:7px;border-radius:50%;background:#9CA3AF;flex-shrink:0;}
 .sdot.ok{background:#16A34A;}.sdot.sy{background:#D97706;animation:pls .8s infinite alternate;}.sdot.er{background:#DC2626;}
 @keyframes pls{from{opacity:.4;}to{opacity:1;}}
@@ -209,10 +218,12 @@ tbody tr:last-child td{border-bottom:none;}
   <button class="btn btn-s btn-sm" onclick="refreshAll()" style="font-size:11px;padding:3px 8px;">↻ Refresh</button>
 </div>
 
+<div id="sb-overlay" class="sb-overlay" onclick="toggleSidebar()"></div>
+
 <div class="app">
 
 <!-- ══ SIDEBAR ══ -->
-<aside class="sb">
+<aside class="sb" id="sidebar">
   <div class="sb-logo">
     <div class="tag">Dept. Community Health & PHC</div>
     <h1>Resident Doctors Activity Tracker</h1>
@@ -257,7 +268,15 @@ tbody tr:last-child td{border-bottom:none;}
 <!-- ══ MAIN ══ -->
 <div class="main">
 <div class="topbar">
-  <div class="tb-l"><h2 id="tb-t">Dashboard</h2><p id="tb-s">Overview of all resident doctor activities</p></div>
+  <div class="tb-l">
+    <button class="hbg" id="hbg-btn" onclick="toggleSidebar()" aria-label="Toggle menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="tb-titles">
+      <h2 id="tb-t">Dashboard</h2>
+      <p id="tb-s">Overview of all resident doctor activities</p>
+    </div>
+  </div>
   <div class="tb-r">
     <select id="gYear" onchange="renderActive()" style="font-size:12.5px;padding:6px 10px;">
       <option value="all">All years</option>
@@ -861,6 +880,41 @@ function actBadge(st){
   return m[st]||"b-gy";
 }
 const dot=(on,color)=>`<span class="dot ${color||( on?"dg":"dr")}"></span>`;
+
+// ══════════════════════════════════════════
+// SIDEBAR TOGGLE
+// ══════════════════════════════════════════
+let sidebarOpen = true;
+
+function toggleSidebar(){
+  sidebarOpen = !sidebarOpen;
+  const sb  = document.getElementById("sidebar");
+  const hbg = document.getElementById("hbg-btn");
+  const main= document.querySelector(".main");
+  const bar = document.getElementById("sync-bar");
+  const ov  = document.getElementById("sb-overlay");
+
+  if(sidebarOpen){
+    sb.classList.remove("closed");
+    hbg.classList.add("open");
+    main.classList.remove("expanded");
+    if(bar) bar.classList.remove("expanded");
+    // On narrow screens show overlay; on wide screens don't need it
+    if(window.innerWidth < 900) ov.classList.add("show");
+  } else {
+    sb.classList.add("closed");
+    hbg.classList.remove("open");
+    main.classList.add("expanded");
+    if(bar) bar.classList.add("expanded");
+    ov.classList.remove("show");
+  }
+}
+
+// Close sidebar on nav click when screen is narrow
+function navAndClose(el){
+  nav(el);
+  if(window.innerWidth < 900 && sidebarOpen) toggleSidebar();
+}
 
 // ══════════════════════════════════════════
 // NAVIGATION
