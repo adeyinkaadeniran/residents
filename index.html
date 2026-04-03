@@ -6,7 +6,7 @@
 <title>PHC Resident Doctors — Activity Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 :root{
   --bg:#F6F4EF;--surf:#FFFFFF;--surf2:#EDEAE3;--bdr:#D9D5CC;--blt:#EAE7E0;
@@ -729,28 +729,33 @@ const DB = { posts: [], leave: [], acts: [] };
 function getCfg(){ return JSON.parse(localStorage.getItem('sb_cfg')||'{}'); }
 function setCfg(url,key){ localStorage.setItem('sb_cfg',JSON.stringify({url,key})); }
 
-function lsGet(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}}
-
 // ── Supabase connect ──
 async function connectSupabase(){
   const url=document.getElementById("cfg-url").value.trim();
   const key=document.getElementById("cfg-key").value.trim();
   const err=document.getElementById("cfg-err");
+  const btn=document.querySelector('#sb-setup .btn-p');
   if(!url||!key){err.style.display="block";err.textContent="Both fields are required.";return;}
   err.style.display="none";
-  setSyncStatus("syncing","Connecting…");
+  if(btn){btn.textContent="Connecting…";btn.disabled=true;}
   try{
-    SB=supabase.createClient(url,key);
-    // Test connection
-    const {error}=await SB.from("postings").select("id").limit(1);
-    if(error)throw error;
+    // Supabase UMD bundle exposes createClient on the supabase global
+    const createClient = (window.supabase && window.supabase.createClient)
+      ? window.supabase.createClient
+      : (typeof createClient !== 'undefined' ? createClient : null);
+    if(!createClient) throw new Error("Supabase library not loaded. Check your internet connection and try refreshing the page.");
+    SB = createClient(url, key);
+    // Test connection with a simple query
+    const {data, error} = await SB.from("postings").select("id").limit(1);
+    if(error) throw new Error(error.message || error.hint || JSON.stringify(error));
     setCfg(url,key);
     document.getElementById("sb-setup").classList.add("hidden");
     await loadAll();
   }catch(e){
     err.style.display="block";
-    err.textContent="Connection failed: "+(e.message||e.hint||JSON.stringify(e));
-    setSyncStatus("err","Connection failed");
+    err.textContent="Connection failed: "+(e.message||JSON.stringify(e));
+  }finally{
+    if(btn){btn.textContent="Connect & Load Data";btn.disabled=false;}
   }
 }
 
@@ -1794,24 +1799,22 @@ function bootApp(){
 (async function init(){
   const cfg=getCfg();
   if(cfg.url && cfg.key){
-    // Pre-fill config fields in case user wants to change them
     document.getElementById("cfg-url").value=cfg.url;
     document.getElementById("cfg-key").value=cfg.key;
-    // Auto-connect
     try{
-      SB=supabase.createClient(cfg.url,cfg.key);
+      const createClient=(window.supabase&&window.supabase.createClient)?window.supabase.createClient:null;
+      if(!createClient)throw new Error("Supabase not loaded");
+      SB=createClient(cfg.url,cfg.key);
       const {error}=await SB.from("postings").select("id").limit(1);
-      if(error)throw error;
+      if(error)throw new Error(error.message||JSON.stringify(error));
       document.getElementById("sb-setup").classList.add("hidden");
       await loadAll();
     }catch(e){
-      // Saved creds failed — show setup screen again
       document.getElementById("sb-setup").classList.remove("hidden");
       document.getElementById("cfg-err").style.display="block";
-      document.getElementById("cfg-err").textContent="Auto-connect failed: "+( e.message||"check your credentials");
+      document.getElementById("cfg-err").textContent="Auto-connect failed: "+(e.message||"check your credentials");
     }
   } else {
-    // No saved creds — show setup screen
     document.getElementById("sb-setup").classList.remove("hidden");
   }
 })();
