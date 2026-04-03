@@ -6,7 +6,6 @@
 <title>PHC Resident Doctors — Activity Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 :root{
   --bg:#F6F4EF;--surf:#FFFFFF;--surf2:#EDEAE3;--bdr:#D9D5CC;--blt:#EAE7E0;
@@ -184,16 +183,7 @@ tbody tr:last-child td{border-bottom:none;}
 .legend-row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;}
 .leg-item{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--tx2);}
 .leg-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
-/* SUPABASE SETUP OVERLAY */
-#sb-setup{position:fixed;inset:0;background:var(--sl);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px;}
-#sb-setup.hidden{display:none;}
-.sb-setup-box{background:var(--surf);border-radius:var(--rl);padding:36px 40px;max-width:500px;width:100%;box-shadow:var(--shm);}
-.sb-setup-box .brand{font-family:'Lora',serif;font-size:13px;font-weight:600;color:var(--gm);margin-bottom:10px;}
-.sb-setup-box h2{font-size:19px;font-weight:600;margin-bottom:8px;}
-.sb-setup-box .desc{font-size:13px;color:var(--tx2);margin-bottom:20px;line-height:1.6;}
-.step-row{display:flex;gap:10px;align-items:flex-start;margin-bottom:12px;font-size:12.5px;color:var(--tx2);line-height:1.55;}
-.step-n{background:var(--sl);color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px;}
-.step-row code{font-family:'DM Mono',monospace;background:var(--surf2);padding:1px 5px;border-radius:4px;font-size:11px;}
+/* SYNC + LOAD */
 #sync-bar{position:fixed;bottom:0;left:250px;right:0;height:26px;background:var(--surf);border-top:1px solid var(--blt);display:flex;align-items:center;padding:0 20px;gap:7px;font-size:11px;color:var(--tx3);z-index:15;}
 .sdot{width:7px;height:7px;border-radius:50%;background:#9CA3AF;flex-shrink:0;}
 .sdot.ok{background:#16A34A;}.sdot.sy{background:#D97706;animation:pls .8s infinite alternate;}.sdot.er{background:#DC2626;}
@@ -205,37 +195,10 @@ tbody tr:last-child td{border-bottom:none;}
 </style>
 </head>
 <body>
-<!-- SUPABASE SETUP SCREEN -->
-<div id="sb-setup">
-  <div class="sb-setup-box">
-    <div class="brand">PHC Resident Doctors Activity Tracker</div>
-    <h2>Connect to Supabase</h2>
-    <p class="desc">Enter your Supabase project credentials. These are stored only in your browser and never sent anywhere except your own Supabase project.</p>
-    <div class="step-row"><div class="step-n">1</div><div>Go to <strong>supabase.com</strong> → your project → <strong>Settings → API</strong></div></div>
-    <div class="step-row"><div class="step-n">2</div><div>Copy the <strong>Project URL</strong> and <strong>anon public</strong> key</div></div>
-    <div class="step-row"><div class="step-n">3</div><div>Run the SQL schema: open <code>supabase_schema.sql</code> in your project's <strong>SQL Editor</strong> and click Run</div></div>
-    <div style="margin-top:20px;">
-      <div class="fg" style="margin-bottom:12px;">
-        <label style="display:block;font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.06em;">Supabase Project URL</label>
-        <input type="text" id="cfg-url" placeholder="https://xxxxxxxxxxxx.supabase.co" style="width:100%;"/>
-      </div>
-      <div class="fg" style="margin-bottom:20px;">
-        <label style="display:block;font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.06em;">Anon / Public Key</label>
-        <input type="text" id="cfg-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…" style="width:100%;font-family:'DM Mono',monospace;font-size:11.5px;"/>
-      </div>
-      <div style="display:flex;gap:10px;align-items:center;">
-        <button class="btn btn-p" onclick="connectSupabase()" style="flex:1;">Connect & Load Data</button>
-        <button class="btn btn-s" onclick="useOffline()" style="font-size:12px;">Use offline (localStorage)</button>
-      </div>
-      <p id="cfg-err" style="color:var(--rd);font-size:12px;margin-top:10px;display:none;"></p>
-    </div>
-  </div>
-</div>
-
 <!-- LOADING SCREEN -->
-<div id="load-screen" class="hidden">
+<div id="load-screen">
   <div class="spinner"></div>
-  <span id="load-msg">Loading data…</span>
+  <span id="load-msg">Connecting to database…</span>
 </div>
 
 <!-- SYNC STATUS BAR -->
@@ -244,7 +207,6 @@ tbody tr:last-child td{border-bottom:none;}
   <span id="sync-msg">Connected to Supabase</span>
   <span style="margin-left:auto;font-size:10.5px;color:var(--tx3);" id="sync-info"></span>
   <button class="btn btn-s btn-sm" onclick="refreshAll()" style="font-size:11px;padding:3px 8px;">↻ Refresh</button>
-  <button class="btn btn-s btn-sm" onclick="showConfig()" style="font-size:11px;padding:3px 8px;">⚙ Config</button>
 </div>
 
 <div class="app">
@@ -725,59 +687,11 @@ let OFFLINE = false; // fallback to localStorage
 // In-memory DB (same shape as before — works offline and online)
 const DB = { posts: [], leave: [], acts: [] };
 
-// ── Config persistence ──
-function getCfg(){ return JSON.parse(localStorage.getItem('sb_cfg')||'{}'); }
-function setCfg(url,key){ localStorage.setItem('sb_cfg',JSON.stringify({url,key})); }
-
-// ── Supabase connect ──
-async function connectSupabase(){
-  const url=document.getElementById("cfg-url").value.trim();
-  const key=document.getElementById("cfg-key").value.trim();
-  const err=document.getElementById("cfg-err");
-  const btn=document.querySelector('#sb-setup .btn-p');
-  if(!url||!key){err.style.display="block";err.textContent="Both fields are required.";return;}
-  err.style.display="none";
-  if(btn){btn.textContent="Connecting…";btn.disabled=true;}
-  try{
-    // Supabase UMD bundle exposes createClient on the supabase global
-    const createClient = (window.supabase && window.supabase.createClient)
-      ? window.supabase.createClient
-      : (typeof createClient !== 'undefined' ? createClient : null);
-    if(!createClient) throw new Error("Supabase library not loaded. Check your internet connection and try refreshing the page.");
-    SB = createClient(url, key);
-    // Test connection with a simple query
-    const {data, error} = await SB.from("postings").select("id").limit(1);
-    if(error) throw new Error(error.message || error.hint || JSON.stringify(error));
-    setCfg(url,key);
-    document.getElementById("sb-setup").classList.add("hidden");
-    await loadAll();
-  }catch(e){
-    err.style.display="block";
-    err.textContent="Connection failed: "+(e.message||JSON.stringify(e));
-  }finally{
-    if(btn){btn.textContent="Connect & Load Data";btn.disabled=false;}
-  }
-}
-
-function useOffline(){
-  OFFLINE=true;
-  // load seed data into DB
-  const seed=buildSeedData();
-  DB.posts=lsGet('rmd2_p',seed.posts);
-  DB.leave=lsGet('rmd2_l',seed.leave);
-  DB.acts=lsGet('rmd2_a',seed.acts);
-  document.getElementById("sb-setup").classList.add("hidden");
-  document.getElementById("sync-bar").style.display="flex";
-  setSyncStatus("ok","Offline mode (localStorage)");
-  bootApp();
-}
-
-function showConfig(){
-  const cfg=getCfg();
-  document.getElementById("cfg-url").value=cfg.url||"";
-  document.getElementById("cfg-key").value=cfg.key||"";
-  document.getElementById("sb-setup").classList.remove("hidden");
-}
+// ── Hardcoded credentials — anon key is safe to embed ──
+const SUPABASE_URL = "https://hhkniwwrneranffbkftn.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhoa25pd3dybmVyYW5mZmJrZnRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNTU2MzEsImV4cCI6MjA5MDczMTYzMX0.F0aeoX7khuA-P2UPMHrv_4OC2Q6QZw8xgrdlQTytt_4";
+function getCfg(){ return {url: SUPABASE_URL, key: SUPABASE_ANON_KEY}; }
+function setCfg(){}
 
 // ── Load all data from Supabase ──
 async function loadAll(){
@@ -1794,30 +1708,39 @@ function bootApp(){
 }
 
 // ══════════════════════════════════════════
-// INIT — auto-connect if credentials saved
+// INIT — load Supabase SDK then auto-connect
 // ══════════════════════════════════════════
-(async function init(){
-  const cfg=getCfg();
-  if(cfg.url && cfg.key){
-    document.getElementById("cfg-url").value=cfg.url;
-    document.getElementById("cfg-key").value=cfg.key;
+(function loadSupabaseThenInit(){
+  const script = document.createElement('script');
+  script.src = 'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js';
+  script.onload = async function(){
     try{
-      const createClient=(window.supabase&&window.supabase.createClient)?window.supabase.createClient:null;
-      if(!createClient)throw new Error("Supabase not loaded");
-      SB=createClient(cfg.url,cfg.key);
-      const {error}=await SB.from("postings").select("id").limit(1);
-      if(error)throw new Error(error.message||JSON.stringify(error));
-      document.getElementById("sb-setup").classList.add("hidden");
+      const createClient = window.supabase && window.supabase.createClient;
+      if(!createClient) throw new Error("Supabase loaded but createClient not found.");
+      SB = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       await loadAll();
     }catch(e){
-      document.getElementById("sb-setup").classList.remove("hidden");
-      document.getElementById("cfg-err").style.display="block";
-      document.getElementById("cfg-err").textContent="Auto-connect failed: "+(e.message||"check your credentials");
+      console.error("Supabase connection error:", e);
+      fallbackOffline(e.message);
     }
-  } else {
-    document.getElementById("sb-setup").classList.remove("hidden");
-  }
+  };
+  script.onerror = function(){
+    fallbackOffline("Could not load Supabase library — check internet connection.");
+  };
+  document.body.appendChild(script);
 })();
+
+function fallbackOffline(reason){
+  OFFLINE = true;
+  const seed = buildSeedData();
+  DB.posts = lsGet('rmd2_p', seed.posts);
+  DB.leave = lsGet('rmd2_l', seed.leave);
+  DB.acts  = lsGet('rmd2_a', seed.acts);
+  document.getElementById("load-screen").classList.add("hidden");
+  document.getElementById("sync-bar").style.display = "flex";
+  setSyncStatus("er", "Offline — " + (reason||"could not reach database"));
+  bootApp();
+}
 </script>
 </body>
 </html>
