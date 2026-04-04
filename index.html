@@ -25,7 +25,7 @@
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;font-size:14px;}
 .app{min-height:100vh;}
-/* SIDEBAR */
+/* SIDEBAR — always fixed, always overlays, never pushes */
 .sb{background:var(--sl);color:#fff;display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;width:250px;overflow:hidden;z-index:50;transition:transform .25s cubic-bezier(.4,0,.2,1);}
 .sb.closed{transform:translateX(-250px);}
 .sb-logo{padding:22px 20px 16px;border-bottom:1px solid rgba(255,255,255,.08);}
@@ -40,20 +40,24 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);min-h
 .ni svg{width:15px;height:15px;flex-shrink:0;opacity:.72;}
 .ni.on svg{opacity:1;}
 .sb-foot{padding:13px 20px;border-top:1px solid rgba(255,255,255,.08);font-size:10px;color:rgba(255,255,255,.28);line-height:1.7;}
-/* SIDEBAR OVERLAY (mobile / when open over content) */
-.sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:49;backdrop-filter:blur(1px);}
+/* OVERLAY — sits between sidebar and content */
+.sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:49;}
 .sb-overlay.show{display:block;}
-/* MAIN — shifts right when sidebar is open */
-.main{display:flex;flex-direction:column;min-height:100vh;overflow-x:hidden;margin-left:250px;transition:margin-left .25s cubic-bezier(.4,0,.2,1);}
-.main.expanded{margin-left:0;}
-/* HAMBURGER BUTTON */
+/* HAMBURGER */
 .hbg{display:flex;flex-direction:column;justify-content:center;gap:5px;width:34px;height:34px;padding:6px;border-radius:8px;cursor:pointer;background:none;border:none;flex-shrink:0;transition:background .15s;}
 .hbg:hover{background:var(--surf2);}
 .hbg span{display:block;height:2px;border-radius:2px;background:var(--tx2);transition:all .22s cubic-bezier(.4,0,.2,1);transform-origin:center;}
 .hbg.open span:nth-child(1){transform:translateY(7px) rotate(45deg);}
 .hbg.open span:nth-child(2){opacity:0;transform:scaleX(0);}
 .hbg.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
-/* BUTTONS */
+/* MAIN — always full width, never shifts */
+.main{display:flex;flex-direction:column;min-height:100vh;overflow-x:hidden;width:100%;}
+.topbar{background:var(--surf);border-bottom:1px solid var(--blt);padding:10px 20px 10px 14px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:20;gap:12px;}
+.tb-l{display:flex;align-items:center;gap:10px;min-width:0;}
+.tb-titles{min-width:0;}
+.tb-l h2{font-size:15px;font-weight:600;white-space:nowrap;}
+.tb-l p{font-size:11.5px;color:var(--tx3);margin-top:1px;}
+.tb-r{display:flex;gap:8px;align-items:center;}
 .btn{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:8px;font-size:12.5px;font-weight:500;cursor:pointer;border:none;font-family:inherit;transition:all .14s;white-space:nowrap;}
 .btn-p{background:var(--gm);color:#fff;}.btn-p:hover{background:var(--gn);}
 .btn-s{background:var(--surf2);color:var(--tx);border:1px solid var(--bdr);}.btn-s:hover{background:var(--blt);}
@@ -155,12 +159,41 @@ tbody tr:last-child td{border-bottom:none;}
 .empty h3{font-size:14px;font-weight:600;color:var(--tx2);margin-bottom:5px;}
 .empty p{font-size:12px;}
 @media(max-width:780px){
-  .app{grid-template-columns:1fr;}
-  .sb{height:auto;position:relative;}
-  .cnt{padding:14px;}
+  /* Layout */
+  .cnt{padding:12px;}
   .fr{grid-template-columns:1fr;}
+  /* Topbar — compact on mobile */
+  .topbar{padding:8px 12px;gap:8px;}
+  .tb-l p{display:none;}
+  .tb-r .btn-sm{padding:5px 8px;font-size:11px;}
+  .tb-r select{font-size:11px;padding:5px 7px;}
+  /* Metrics */
+  .mrow{grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px;}
+  /* Dashboard charts stack */
+  .st-grid{grid-template-columns:1fr;}
+  .st-grid-2{grid-template-columns:1fr;}
+  /* Import page */
+  #p-import > div{grid-template-columns:1fr;}
+  /* Doc cards stack */
+  #st-cards{grid-template-columns:1fr!important;}
+  /* Filter bar wraps tightly */
+  .fb{gap:6px;}
+  .fb label{display:none;}
+  .sw input{min-width:120px;}
+  /* Tables scroll */
+  .tw{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  /* Modal full width */
+  .modal{max-width:100%;margin:8px;}
+  /* Sync bar font */
+  #sync-bar{font-size:10px;padding:0 10px;}
 }
-/* STATS PAGE */
+/* Responsive grid helpers */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+.grid-db{display:grid;grid-template-columns:1.1fr .9fr;gap:14px;margin-bottom:14px;}
+.grid-imp{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
+@media(max-width:780px){
+  .grid-2,.grid-db,.grid-imp{grid-template-columns:1fr;}
+}
 .score-ring{width:56px;height:56px;flex-shrink:0;}
 .score-ring circle{fill:none;stroke-width:5;stroke-linecap:round;}
 .doc-card{background:var(--surf);border:1px solid var(--blt);border-radius:var(--rl);padding:16px 18px;margin-bottom:10px;transition:box-shadow .15s;}
@@ -192,7 +225,7 @@ tbody tr:last-child td{border-bottom:none;}
 .leg-item{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--tx2);}
 .leg-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
 /* SYNC + LOAD */
-#sync-bar{position:fixed;bottom:0;left:250px;right:0;height:26px;background:var(--surf);border-top:1px solid var(--blt);display:flex;align-items:center;padding:0 20px;gap:7px;font-size:11px;color:var(--tx3);z-index:15;transition:left .25s cubic-bezier(.4,0,.2,1);}
+#sync-bar{position:fixed;bottom:0;left:0;right:0;height:26px;background:var(--surf);border-top:1px solid var(--blt);display:flex;align-items:center;padding:0 20px;gap:7px;font-size:11px;color:var(--tx3);z-index:15;}
 #sync-bar.expanded{left:0;}
 .sdot{width:7px;height:7px;border-radius:50%;background:#9CA3AF;flex-shrink:0;}
 .sdot.ok{background:#16A34A;}.sdot.sy{background:#D97706;animation:pls .8s infinite alternate;}.sdot.er{background:#DC2626;}
@@ -223,7 +256,7 @@ tbody tr:last-child td{border-bottom:none;}
 <div class="app">
 
 <!-- ══ SIDEBAR ══ -->
-<aside class="sb" id="sidebar">
+<aside class="sb closed" id="sidebar">
   <div class="sb-logo">
     <div class="tag">Dept. Community Health & PHC</div>
     <h1>Resident Doctors Activity Tracker</h1>
@@ -292,7 +325,7 @@ tbody tr:last-child td{border-bottom:none;}
 <!-- DASHBOARD -->
 <div class="pg on" id="p-dashboard">
   <div class="mrow" id="db-mc"></div>
-  <div style="display:grid;grid-template-columns:1.1fr .9fr;gap:14px;margin-bottom:14px;">
+  <div class="grid-db">
     <div class="card">
       <div class="card-hd"><h3>Postings by station</h3></div>
       <div class="card-bd"><div class="cw" style="height:210px;"><canvas id="c-stn"></canvas></div></div>
@@ -505,7 +538,7 @@ tbody tr:last-child td{border-bottom:none;}
     <h3>Doctor performance cards</h3>
     <span style="font-size:11.5px;color:var(--tx3);">Detailed breakdown per doctor</span>
   </div>
-  <div id="st-cards" style="background:var(--bg);padding:14px;border:1px solid var(--blt);border-top:none;border-radius:0 0 var(--rl) var(--rl);display:grid;grid-template-columns:1fr 1fr;gap:12px;"></div>
+  <div id="st-cards" class="grid-2" style="background:var(--bg);padding:14px;border:1px solid var(--blt);border-top:none;border-radius:0 0 var(--rl) var(--rl);gap:12px;"></div>
 </div>
 
 <!-- IMPORT -->
@@ -520,7 +553,7 @@ tbody tr:last-child td{border-bottom:none;}
     <button class="btn btn-s btn-sm" onclick="setImpType('other',this)" id="itab-other">📌 Other Activities</button>
   </div>
 
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;">
+  <div class="grid-imp">
     <div>
       <!-- Upload zone -->
       <div class="card">
@@ -884,36 +917,29 @@ const dot=(on,color)=>`<span class="dot ${color||( on?"dg":"dr")}"></span>`;
 // ══════════════════════════════════════════
 // SIDEBAR TOGGLE
 // ══════════════════════════════════════════
-let sidebarOpen = true;
+let sidebarOpen = false;  // starts closed so content is always full width
 
 function toggleSidebar(){
   sidebarOpen = !sidebarOpen;
   const sb  = document.getElementById("sidebar");
   const hbg = document.getElementById("hbg-btn");
-  const main= document.querySelector(".main");
-  const bar = document.getElementById("sync-bar");
   const ov  = document.getElementById("sb-overlay");
 
   if(sidebarOpen){
     sb.classList.remove("closed");
     hbg.classList.add("open");
-    main.classList.remove("expanded");
-    if(bar) bar.classList.remove("expanded");
-    // On narrow screens show overlay; on wide screens don't need it
-    if(window.innerWidth < 900) ov.classList.add("show");
+    ov.classList.add("show");
   } else {
     sb.classList.add("closed");
     hbg.classList.remove("open");
-    main.classList.add("expanded");
-    if(bar) bar.classList.add("expanded");
     ov.classList.remove("show");
   }
 }
 
-// Close sidebar on nav click when screen is narrow
+// Also close when a nav item is clicked
 function navAndClose(el){
   nav(el);
-  if(window.innerWidth < 900 && sidebarOpen) toggleSidebar();
+  if(sidebarOpen) toggleSidebar();
 }
 
 // ══════════════════════════════════════════
