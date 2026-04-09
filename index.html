@@ -348,6 +348,10 @@ tbody tr:last-child td{border-bottom:none;}
     <label>Year</label><select id="ry" onchange="renderRoster()"></select>
     <label>Month</label><select id="rm" onchange="renderRoster()"><option value="all">All months</option></select>
     <label>Station</label><select id="rst" onchange="renderRoster()"><option value="all">All stations</option></select>
+    <label>Designation</label>
+    <select id="rdesig" onchange="renderRoster()">
+      <option value="all">All</option><option value="SR">SR</option><option value="R">R</option><option value="MO">MO</option>
+    </select>
     <label>Report</label>
     <select id="rrs" onchange="renderRoster()">
       <option value="all">All</option><option value="completed">Signed</option><option value="pending">Pending</option>
@@ -368,6 +372,10 @@ tbody tr:last-child td{border-bottom:none;}
     <label>Type</label>
     <select id="lt" onchange="renderLeave()">
       <option value="all">All types</option><option>Annual leave</option><option>Exam leave</option><option>Maternity leave</option><option>Sick leave</option><option>Study leave</option>
+    </select>
+    <label>Designation</label>
+    <select id="ldesig" onchange="renderLeave()">
+      <option value="all">All</option><option value="SR">SR</option><option value="R">R</option><option value="MO">MO</option>
     </select>
     <label>Status</label>
     <select id="ls" onchange="renderLeave()">
@@ -463,6 +471,10 @@ tbody tr:last-child td{border-bottom:none;}
 <div class="pg" id="p-stats">
   <div class="fb">
     <label>Year</label><select id="sty" onchange="renderStats()"><option value="all">All years</option></select>
+    <label>Designation</label>
+    <select id="stdesig" onchange="renderStats()">
+      <option value="all">All</option><option value="SR">SR</option><option value="R">R</option><option value="MO">MO</option>
+    </select>
     <label>Sort by</label>
     <select id="st-sort" onchange="renderStats()">
       <option value="score">Overall score</option>
@@ -520,7 +532,7 @@ tbody tr:last-child td{border-bottom:none;}
     </div>
     <div class="tw"><table>
       <thead><tr>
-        <th>Rank</th><th>Doctor</th>
+        <th>Rank</th><th>Doctor</th><th>Designation</th>
         <th title="Reports signed (target ≥6)">Sign-offs</th>
         <th title="Journal presentations (target ≥1)">Journal pres.</th>
         <th title="Seminar presentations (target ≥1)">Seminar pres.</th>
@@ -615,7 +627,16 @@ tbody tr:last-child td{border-bottom:none;}
     <div class="mhd"><h2>Add / Edit Posting</h2><button class="mx" onclick="closeM('m-post')">×</button></div>
     <div class="mbd">
       <input type="hidden" id="mp-id"/>
-      <div class="fg"><label>Doctor *</label><input id="mp-doc" list="dl-d" placeholder="e.g. ADEBANJO"/></div>
+      <div class="fr">
+        <div class="fg"><label>Doctor *</label><input id="mp-doc" list="dl-d" placeholder="e.g. ADEBANJO"/></div>
+        <div class="fg"><label>Designation *</label>
+          <select id="mp-desig">
+            <option value="SR">SR — Senior Registrar</option>
+            <option value="R">R — Registrar</option>
+            <option value="MO">MO — Medical Officer</option>
+          </select>
+        </div>
+      </div>
       <div class="fr">
         <div class="fg"><label>Month *</label>
           <select id="mp-mo"><option>January</option><option>February</option><option>March</option><option>April</option><option>May</option><option>June</option><option>July</option><option>August</option><option>September</option><option>October</option><option>November</option><option>December</option></select>
@@ -764,7 +785,7 @@ async function loadAll(){
     const {data:acts,error:ae}=await SB.from("activities").select("*").order("date",{nullsFirst:false});
     if(ae)throw ae;
 
-    DB.posts = posts.map(r=>({id:r.id,doctor:r.doctor,month:r.month,year:r.year,station:r.station,rs:r.rs,con:r.con||"",notes:r.notes||""}));
+    DB.posts = posts.map(r=>({id:r.id,doctor:r.doctor,desig:r.desig||"R",month:r.month,year:r.year,station:r.station,rs:r.rs,con:r.con||"",notes:r.notes||""}));
     DB.leave = leave.map(r=>({id:r.id,name:r.name,type:r.type,start:r.start_date,end:r.end_date,dur:r.dur||"",rel:r.rel||"",notes:r.notes||""}));
     DB.acts  = acts.map(r=>({id:r.id,kind:r.kind,doctor:r.doctor,title:r.title,date:r.date||"",year:r.year||"",venue:r.venue||"",extra:r.extra||"",pubtype:r.pubtype||"",jn:r.jn||"",category:r.category||"",status:r.status,notes:r.notes||""}));
 
@@ -849,7 +870,7 @@ function setSyncStatus(state,msg){
 }
 
 // ── DB-to-Supabase mappers ──
-function postToRow(p){return{id:p.id,doctor:p.doctor,month:p.month,year:p.year,station:p.station,rs:p.rs||"pending",con:p.con||"",notes:p.notes||""};}
+function postToRow(p){return{id:p.id,doctor:p.doctor,desig:p.desig||"R",month:p.month,year:p.year,station:p.station,rs:p.rs||"pending",con:p.con||"",notes:p.notes||""};}
 function leaveToRow(l){return{id:l.id,name:l.name,type:l.type,start_date:l.start,end_date:l.end,dur:l.dur||"",rel:l.rel||"",notes:l.notes||""};}
 function actToRow(a){return{id:a.id,kind:a.kind,doctor:a.doctor,title:a.title,date:a.date||null,year:a.year||"",venue:a.venue||"",extra:a.extra||"",pubtype:a.pubtype||"",jn:a.jn||"",category:a.category||"",status:a.status||"Scheduled",notes:a.notes||""};}
 
@@ -1044,12 +1065,14 @@ function renderDB(){
 function renderRoster(){
   const yr=document.getElementById("ry")?.value||"all",mo=document.getElementById("rm")?.value||"all",
     st=document.getElementById("rst")?.value||"all",rs=document.getElementById("rrs")?.value||"all",
+    desig=document.getElementById("rdesig")?.value||"all",
     q=(document.getElementById("rq")?.value||"").toLowerCase();
   let data=DB.posts;
   if(yr!=="all")data=data.filter(p=>p.year===yr);
   if(mo!=="all")data=data.filter(p=>p.month===mo);
   if(st!=="all")data=data.filter(p=>p.station.toUpperCase().includes(st));
   if(rs!=="all")data=data.filter(p=>p.rs===rs);
+  if(desig!=="all")data=data.filter(p=>(p.desig||"R")===desig);
   if(q)data=data.filter(p=>p.doctor.toLowerCase().includes(q));
   // month dropdown
   const mEl=document.getElementById("rm");
@@ -1066,15 +1089,18 @@ function renderRoster(){
   document.getElementById("r-ct").textContent=`${docs.length} doctors · ${data.length} entries`;
   const th=document.getElementById("r-th"),tb=document.getElementById("r-tb");
   if(!data.length){th.innerHTML="";tb.innerHTML=`<tr><td colspan="6" style="padding:32px;text-align:center;color:var(--tx3);">No records match filters</td></tr>`;return;}
-  th.innerHTML=`<tr><th>Doctor</th>${ordM.map(m=>`<th>${m}</th>`).join("")}<th>Report status</th><th></th></tr>`;
+  th.innerHTML=`<tr><th>Doctor</th><th>Designation</th>${ordM.map(m=>`<th>${m}</th>`).join("")}<th>Report status</th><th></th></tr>`;
+  const desigBadge={SR:"b-bl",R:"b-pu",MO:"b-tl"};
   tb.innerHTML=docs.map(doc=>{
     const de=data.filter(p=>p.doctor===doc);
     const byM={};for(const e of de)byM[e.month]=e;
     const allSigned=de.every(e=>e.rs==="completed");
     const anySigned=de.some(e=>e.rs==="completed");
     const lastId=de[de.length-1]?.id||"";
+    const dsg=de[0]?.desig||"R";
     return`<tr>
       <td style="font-weight:600;white-space:nowrap;">${doc}</td>
+      <td><span class="badge ${desigBadge[dsg]||"b-gy"}">${dsg}</span></td>
       ${ordM.map(m=>{const e=byM[m];return e?`<td><span class="badge ${stBadge(e.station)}">${e.station}</span></td>`:`<td style="color:var(--tx3);font-size:12px;">—</td>`;}).join("")}
       <td>${allSigned?`<span class="badge b-gn">${dot(true)} Signed</span>`:anySigned?`<span class="badge b-am">${dot(true,'da')} Partial</span>`:`<span class="badge b-rd">${dot(false)} Pending</span>`}</td>
       <td><button class="btn btn-s btn-sm" onclick="editPost('${lastId}')">Edit</button></td></tr>`;
@@ -1086,11 +1112,23 @@ function renderRoster(){
 // ══════════════════════════════════════════
 function renderLeave(){
   const yr=document.getElementById("ly")?.value||"all",ty=document.getElementById("lt")?.value||"all",
-    sf=document.getElementById("ls")?.value||"all",q=(document.getElementById("lq")?.value||"").toLowerCase();
+    sf=document.getElementById("ls")?.value||"all",
+    desig=document.getElementById("ldesig")?.value||"all",
+    q=(document.getElementById("lq")?.value||"").toLowerCase();
   let data=DB.leave;
   if(yr!=="all")data=data.filter(l=>l.start.startsWith(yr));
   if(ty!=="all")data=data.filter(l=>l.type===ty);
   if(sf!=="all")data=data.filter(l=>leaveStatus(l)===sf);
+  // designation filter: match against known doctor designations from postings
+  if(desig!=="all"){
+    const desigMap={};
+    for(const p of DB.posts){if(!desigMap[p.doctor])desigMap[p.doctor]=p.desig||"R";}
+    data=data.filter(l=>{
+      const docKey=l.name.toUpperCase().replace(/^DR\.?\s*/,"").split(" ")[0];
+      const matched=Object.entries(desigMap).find(([k])=>k.includes(docKey));
+      return matched?matched[1]===desig:desig==="R";
+    });
+  }
   if(q)data=data.filter(l=>l.name.toLowerCase().includes(q)||(l.rel||"").toLowerCase().includes(q));
   document.getElementById("l-ct").textContent=`${data.length} records`;
   const lvTypeBadge={"Annual leave":"b-gn","Exam leave":"b-am","Maternity leave":"b-ro","Sick leave":"b-rd","Study leave":"b-bl"};
@@ -1156,17 +1194,17 @@ let pending=[];
 const IMP_CFG={
   roster:{
     title:"Upload Duty Roster CSV",
-    hint:"<code>DOCTOR, MONTH, YEAR, STATION</code>",
-    guide:[["DOCTOR","ADEBANJO","Required"],["MONTH","January","Required"],["YEAR","2026","Required"],["STATION","CHEST","Required"],["REPORT_STATUS","completed / pending","Optional"],["CONSULTANT","Dr. Smith","Optional"]],
-    tplRows:["DOCTOR,MONTH,YEAR,STATION,REPORT_STATUS,CONSULTANT","ADEBANJO,January,2026,CHEST,pending,","BASHIR,February,2026,STAFF,completed,Dr. Smith"],
+    hint:"<code>DOCTOR, DESIGNATION, MONTH, YEAR, STATION</code>",
+    guide:[["DOCTOR","ADEBANJO","Required"],["DESIGNATION","SR / R / MO","Required"],["MONTH","January","Required"],["YEAR","2026","Required"],["STATION","CHEST","Required"],["REPORT_STATUS","completed / pending","Optional"],["CONSULTANT","Dr. Smith","Optional"]],
+    tplRows:["DOCTOR,DESIGNATION,MONTH,YEAR,STATION,REPORT_STATUS,CONSULTANT","ADEBANJO,SR,January,2026,CHEST,pending,","BASHIR,R,February,2026,STAFF,completed,Dr. Smith"],
     tplName:"roster_template.csv",
     recTitle:"Posting records",
-    thead:"<tr><th>Doctor</th><th>Month</th><th>Year</th><th>Station</th><th>Report</th><th></th></tr>",
-    rowFn:(r)=>`<tr><td style="font-weight:600;">${r.doctor}</td><td>${r.month}</td><td>${r.year}</td><td><span class="badge ${stBadge(r.station)}">${r.station}</span></td><td>${r.rs==="completed"?'<span class="badge b-gn">Signed</span>':'<span class="badge b-rd">Pending</span>'}</td><td><button class="btn btn-d btn-sm btn-ic" onclick="delPost('${r.id}')">✕</button></td></tr>`,
+    thead:"<tr><th>Doctor</th><th>Desig.</th><th>Month</th><th>Year</th><th>Station</th><th>Report</th><th></th></tr>",
+    rowFn:(r)=>`<tr><td style="font-weight:600;">${r.doctor}</td><td><span class="badge ${({SR:"b-bl",R:"b-pu",MO:"b-tl"})[r.desig]||"b-gy"}">${r.desig||"R"}</span></td><td>${r.month}</td><td>${r.year}</td><td><span class="badge ${stBadge(r.station)}">${r.station}</span></td><td>${r.rs==="completed"?'<span class="badge b-gn">Signed</span>':'<span class="badge b-rd">Pending</span>'}</td><td><button class="btn btn-d btn-sm btn-ic" onclick="delPost('${r.id}')">✕</button></td></tr>`,
     parse:(lines,hdrs)=>{
-      const iD=fi(hdrs,"DOCTOR"),iM=fi(hdrs,"MONTH"),iY=fi(hdrs,"YEAR"),iS=fi(hdrs,"STATION"),iR=fi(hdrs,"REPORT"),iC=fi(hdrs,"CONSULTANT");
+      const iD=fi(hdrs,"DOCTOR"),iDsg=fi(hdrs,"DESIG"),iM=fi(hdrs,"MONTH"),iY=fi(hdrs,"YEAR"),iS=fi(hdrs,"STATION"),iR=fi(hdrs,"REPORT"),iC=fi(hdrs,"CONSULTANT");
       if([iD,iM,iY,iS].some(i=>i<0))return null;
-      return lines.slice(1).map(l=>{const c=splitCSV(l);return{id:uid(),doctor:c[iD]?.toUpperCase()||"",month:c[iM]||"",year:c[iY]||"",station:(c[iS]||"").toUpperCase(),rs:c[iR]?.toLowerCase()||"pending",con:c[iC]||"",notes:""};}).filter(r=>r.doctor);
+      return lines.slice(1).map(l=>{const c=splitCSV(l);return{id:uid(),doctor:c[iD]?.toUpperCase()||"",desig:iDsg>=0?(c[iDsg]?.toUpperCase()||"R"):"R",month:c[iM]||"",year:c[iY]||"",station:(c[iS]||"").toUpperCase(),rs:c[iR]?.toLowerCase()||"pending",con:c[iC]||"",notes:""};}).filter(r=>r.doctor);
     },
     commit:(rows)=>{DB.posts=[...DB.posts,...rows];},
     getData:()=>[...DB.posts].reverse().slice(0,120)
@@ -1375,7 +1413,7 @@ function clearAll(){clearActive();}
 
 function xCSV(type){
   let rows=[],header="";
-  if(type==="postings"){header="DOCTOR,MONTH,YEAR,STATION,REPORT_STATUS,CONSULTANT,NOTES";rows=DB.posts.map(p=>`${p.doctor},${p.month},${p.year},"${p.station}",${p.rs||"pending"},"${p.con||""}","${p.notes||""}"`);}
+  if(type==="postings"){header="DOCTOR,DESIGNATION,MONTH,YEAR,STATION,REPORT_STATUS,CONSULTANT,NOTES";rows=DB.posts.map(p=>`${p.doctor},${p.desig||"R"},${p.month},${p.year},"${p.station}",${p.rs||"pending"},"${p.con||""}","${p.notes||""}"`);}
   else if(type==="leave"){header="NAME,TYPE,START,END,DURATION,RELIEVER,NOTES";rows=DB.leave.map(l=>`"${l.name}","${l.type}",${l.start},${l.end},"${l.dur||""}","${l.rel||""}","${l.notes||""}"`);}
   else{header="DOCTOR,TITLE,DATE,YEAR,STATUS,NOTES";rows=DB.acts.filter(a=>a.kind===type).map(a=>`${a.doctor},"${a.title}",${a.date||""},${a.year||""},"${a.status}","${a.notes||""}"`);}
   const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([[header,...rows].join("\n")],{type:"text/csv"}));a.download=`${type}_export.csv`;a.click();toast("CSV exported","ok");
@@ -1391,6 +1429,7 @@ document.querySelectorAll(".ov").forEach(el=>el.addEventListener("click",e=>{if(
 // Posting
 function savePost(){
   const doc=document.getElementById("mp-doc").value.trim().toUpperCase();
+  const desig=document.getElementById("mp-desig").value;
   const mo=document.getElementById("mp-mo").value;
   const yr=document.getElementById("mp-yr").value.trim();
   const st=document.getElementById("mp-st").value.trim().toUpperCase();
@@ -1399,8 +1438,8 @@ function savePost(){
   const notes=document.getElementById("mp-nt").value.trim();
   if(!doc||!mo||!yr||!st){toast("Fill required fields","err");return;}
   const eid=document.getElementById("mp-id").value;
-  if(eid){const i=DB.posts.findIndex(p=>p.id===eid);if(i>-1)DB.posts[i]={...DB.posts[i],doctor:doc,month:mo,year:yr,station:st,rs,con,notes};}
-  else DB.posts.push({id:uid(),doctor:doc,month:mo,year:yr,station:st,rs,con,notes});
+  if(eid){const i=DB.posts.findIndex(p=>p.id===eid);if(i>-1)DB.posts[i]={...DB.posts[i],doctor:doc,desig,month:mo,year:yr,station:st,rs,con,notes};}
+  else DB.posts.push({id:uid(),doctor:doc,desig,month:mo,year:yr,station:st,rs,con,notes});
   const savedPost=DB.posts.find(x=>x.id===(eid||""))||DB.posts[DB.posts.length-1];
   save("postings", postToRow(savedPost));
   initSel();closeM("m-post");
@@ -1410,6 +1449,7 @@ function savePost(){
 function editPost(id){
   const p=DB.posts.find(x=>x.id===id);if(!p)return;
   document.getElementById("mp-id").value=p.id;document.getElementById("mp-doc").value=p.doctor;
+  document.getElementById("mp-desig").value=p.desig||"R";
   document.getElementById("mp-mo").value=p.month;document.getElementById("mp-yr").value=p.year;
   document.getElementById("mp-st").value=p.station;document.getElementById("mp-rs").value=p.rs||"pending";
   document.getElementById("mp-con").value=p.con||"";document.getElementById("mp-nt").value=p.notes||"";
@@ -1514,6 +1554,9 @@ function calcDocStats(yr){
   const posts=yr==="all"?DB.posts:DB.posts.filter(p=>p.year===yr);
   const acts=yr==="all"?DB.acts:DB.acts.filter(a=>(a.year||a.date?.slice(0,4))===yr);
   const allDocs=[...new Set([...posts.map(p=>p.doctor),...acts.map(a=>a.doctor)])].sort();
+  // build designation map from posts
+  const desigMap={};
+  for(const p of DB.posts){if(!desigMap[p.doctor])desigMap[p.doctor]=p.desig||"R";}
   return allDocs.map(doc=>{
     const dp=posts.filter(p=>p.doctor===doc);
     const da=acts.filter(a=>a.doctor===doc);
@@ -1556,7 +1599,7 @@ function calcDocStats(yr){
     const metRes   =researchProjects>=T.researchProjects;
     const targetsMet=[metSign,metJourn,metSemin,metPub,metRes].filter(Boolean).length;
 
-    return{doc,dp,signed,journals,seminars,research,other,jDone,sDone,pubs,researchProjects,oDone,
+    return{doc,desig:desigMap[doc]||"R",dp,signed,journals,seminars,research,other,jDone,sDone,pubs,researchProjects,oDone,
       totalActs,totalDone,compRate,score,
       scoreSign,scoreJourn,scoreSemin,scorePub,scoreRes,
       metSign,metJourn,metSemin,metPub,metRes,targetsMet};
@@ -1565,9 +1608,11 @@ function calcDocStats(yr){
 
 function renderStats(){
   const yr=document.getElementById("sty")?.value||"all";
+  const desig=document.getElementById("stdesig")?.value||"all";
   const sort=document.getElementById("st-sort")?.value||"score";
   const q=(document.getElementById("stq")?.value||"").toLowerCase();
   let stats=calcDocStats(yr);
+  if(desig!=="all")stats=stats.filter(s=>s.desig===desig);
   if(q)stats=stats.filter(s=>s.doc.toLowerCase().includes(q));
   stats.sort((a,b)=>{
     if(sort==="score")return b.score-a.score;
@@ -1696,17 +1741,19 @@ function renderStats(){
   }).join("")||`<div style="text-align:center;color:var(--tx3);padding:20px;font-size:13px;">No data yet</div>`;
 
   // Leaderboard
-  const tCell=(met,actual,target,label)=>{
+  const tCell=(met,actual,target)=>{
     const col=met?"#166534":actual>0?"#D97706":"#6B7280";
     const icon=met?`<span style="color:#166534;font-size:12px;">✓</span>`:`<span style="color:#DC2626;font-size:11px;">✗</span>`;
     return`<td>${icon} <span style="font-weight:600;color:${col};">${actual}</span><span style="color:var(--tx3);font-size:11px;">/${target}</span></td>`;
   };
+  const desigBadgeLb={SR:"b-bl",R:"b-pu",MO:"b-tl"};
   document.getElementById("st-lb").innerHTML=stats.map((s,i)=>{
     const rankClass=i===0?"rank-1":i===1?"rank-2":i===2?"rank-3":"rank-n";
     const scoreColor=s.score>=80?"#166534":s.score>=50?"#D97706":"#DC2626";
     return`<tr>
       <td><span class="rank-badge ${rankClass}">${i+1}</span></td>
-      <td style="font-weight:600;">${s.doc}</td>
+      <td style="font-weight:600;white-space:nowrap;">${s.doc}</td>
+      <td><span class="badge ${desigBadgeLb[s.desig]||"b-gy"}">${s.desig||"R"}</span></td>
       ${tCell(s.metSign,s.signed,T.signedReports)}
       ${tCell(s.metJourn,s.jDone,T.journalPresentations)}
       ${tCell(s.metSemin,s.sDone,T.seminarPresentations)}
@@ -1715,7 +1762,7 @@ function renderStats(){
       <td><span class="badge ${s.targetsMet===5?"b-gn":s.targetsMet>=3?"b-am":"b-rd"}">${s.targetsMet}/5 targets</span></td>
       <td><span style="font-size:16px;font-weight:700;color:${scoreColor};">${s.score}</span><span style="font-size:11px;color:var(--tx3);">/100</span></td>
     </tr>`;
-  }).join("")||`<tr><td colspan="9" style="padding:32px;text-align:center;color:var(--tx3);">No data</td></tr>`;
+  }).join("")||`<tr><td colspan="10" style="padding:32px;text-align:center;color:var(--tx3);">No data</td></tr>`;
 
   // Doctor cards
   document.getElementById("st-cards").innerHTML=stats.map(s=>{
@@ -1737,7 +1784,7 @@ function renderStats(){
           <text x="28" y="31" text-anchor="middle" font-size="12" font-weight="700" fill="${scoreColor}" font-family="DM Sans,sans-serif">${s.score}</text>
         </svg>
         <div style="flex:1;min-width:0;">
-          <div class="doc-name">${s.doc}</div>
+          <div class="doc-name">${s.doc} <span class="badge ${desigBadgeLb[s.desig]||"b-gy"}" style="font-size:10px;padding:1px 6px;vertical-align:middle;">${s.desig||"R"}</span></div>
           <div class="doc-role">${s.dp.length} postings · ${s.totalActs} activities</div>
         </div>
         <span class="badge ${s.targetsMet===5?"b-gn":s.targetsMet>=3?"b-am":"b-rd"}" style="align-self:flex-start;">${s.targetsMet}/5</span>
