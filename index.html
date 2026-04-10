@@ -224,13 +224,34 @@ tbody tr:last-child td{border-bottom:none;}
 .legend-row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;}
 .leg-item{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--tx2);}
 .leg-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
-/* SYNC + LOAD */
+/* ATTENDANCE MATRIX */
+.mat-p{color:#166534;font-weight:700;font-size:14px;}
+.mat-a{color:#DC2626;font-weight:700;font-size:14px;}
+.mat-e{color:#D97706;font-weight:700;font-size:13px;}
+.mat-cell{text-align:center;padding:8px 6px !important;}
+.mat-pct{text-align:center;}
 #sync-bar{position:fixed;bottom:0;left:0;right:0;height:26px;background:var(--surf);border-top:1px solid var(--blt);display:flex;align-items:center;padding:0 20px;gap:7px;font-size:11px;color:var(--tx3);z-index:15;}
 #sync-bar.expanded{left:0;}
 .sdot{width:7px;height:7px;border-radius:50%;background:#9CA3AF;flex-shrink:0;}
 .sdot.ok{background:#16A34A;}.sdot.sy{background:#D97706;animation:pls .8s infinite alternate;}.sdot.er{background:#DC2626;}
 @keyframes pls{from{opacity:.4;}to{opacity:1;}}
 #load-screen{position:fixed;inset:0;background:var(--sl);z-index:998;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:#fff;font-size:14px;}
+/* ATTENDANCE */
+.at-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:var(--bg);font-size:13px;}
+.at-row:nth-child(even){background:var(--surf2);}
+.at-name{flex:1;font-weight:500;}
+.at-btns{display:flex;gap:4px;}
+.at-btn{padding:4px 10px;border-radius:6px;border:1px solid var(--bdr);font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .14s;background:var(--surf);}
+.at-btn:hover{border-color:var(--gm);}
+.at-btn.sel-present{background:#DCFCE7;border-color:#16A34A;color:#14532D;}
+.at-btn.sel-absent{background:#FEE2E2;border-color:#DC2626;color:#991B1B;}
+.at-btn.sel-excused{background:#FEF3C7;border-color:#D97706;color:#78350F;}
+/* Matrix cell */
+.mat-cell{text-align:center;font-size:12px;font-weight:700;padding:6px 4px !important;}
+.mat-p{color:#14532D;background:#DCFCE7;}
+.mat-a{color:#991B1B;background:#FEE2E2;}
+.mat-e{color:#78350F;background:#FEF3C7;}
+.mat-pct{font-size:11px;font-weight:600;padding:4px !important;white-space:nowrap;}
 #load-screen.hidden{display:none;}
 .spinner{width:30px;height:30px;border:3px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
@@ -284,6 +305,9 @@ tbody tr:last-child td{border-bottom:none;}
     <div class="ni" data-pg="seminar" onclick="nav(this)">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Seminars
     </div>
+    <div class="ni" data-pg="attendance" onclick="nav(this)">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>Attendance Register
+    </div>
     <div class="ni" data-pg="research" onclick="nav(this)">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Research & Publications
     </div>
@@ -293,6 +317,9 @@ tbody tr:last-child td{border-bottom:none;}
     <div class="sb-sec">Data</div>
     <div class="ni" data-pg="import" onclick="nav(this)">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>Import Data
+    </div>
+    <div class="ni" data-pg="guide" onclick="nav(this)">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>How to Use
     </div>
   </nav>
   <div class="sb-foot">Department of Community Health &amp; PHC<br/>Resident Doctors · Lagos State</div>
@@ -617,6 +644,231 @@ tbody tr:last-child td{border-bottom:none;}
   </div>
 </div>
 
+<!-- ATTENDANCE REGISTER -->
+<div class="pg" id="p-attendance">
+  <div class="fb">
+    <label>Type</label>
+    <select id="at-type" onchange="renderAttendance()">
+      <option value="all">All sessions</option>
+      <option value="journal">Journal Club</option>
+      <option value="seminar">Seminar</option>
+    </select>
+    <label>Year</label><select id="at-yr" onchange="renderAttendance()"><option value="all">All years</option></select>
+    <label>Session</label><select id="at-session" onchange="renderAttendance()"><option value="all">All sessions</option></select>
+    <label>Designation</label>
+    <select id="at-desig" onchange="renderAttendance()">
+      <option value="all">All</option><option value="SR">SR</option><option value="R">R</option><option value="MO">MO</option>
+    </select>
+    <div class="sw" style="margin-left:auto;"><input type="text" id="at-q" placeholder="Search doctor…" oninput="renderAttendance()"/></div>
+    <button class="btn btn-p btn-sm" onclick="openM('m-attend');loadSessionsForAttend();">+ Record Attendance</button>
+    <button class="btn btn-s btn-sm" onclick="xCSV('attendance')">⬇ CSV</button>
+  </div>
+
+  <!-- Summary cards -->
+  <div class="mrow" id="at-mc"></div>
+
+  <!-- Attendance matrix (doctors vs sessions) -->
+  <div class="card" style="margin-bottom:14px;">
+    <div class="card-hd">
+      <h3>Attendance matrix <span id="at-ct" style="font-size:12px;font-weight:400;color:var(--tx3);"></span></h3>
+      <span style="font-size:11.5px;color:var(--tx3);">✓ Present &nbsp; A Absent &nbsp; E Excused</span>
+    </div>
+    <div class="tw" id="at-matrix-wrap">
+      <table><thead id="at-th"></thead><tbody id="at-tb"></tbody></table>
+    </div>
+  </div>
+
+  <!-- Detailed log -->
+  <div class="card">
+    <div class="card-hd"><h3>Attendance log</h3></div>
+    <div class="tw"><table>
+      <thead><tr><th>#</th><th>Doctor</th><th>Designation</th><th>Session type</th><th>Topic</th><th>Date</th><th>Status</th><th>Notes</th><th></th></tr></thead>
+      <tbody id="at-log-tb"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- HOW TO USE GUIDE -->
+<div class="pg" id="p-guide">
+  <div style="max-width:900px;margin:0 auto;">
+    <div style="background:var(--sl);border-radius:var(--rl);padding:28px 32px;margin-bottom:18px;color:#fff;">
+      <div style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:8px;">Quick Reference Guide</div>
+      <h2 style="font-family:'Lora',serif;font-size:22px;font-weight:600;margin-bottom:6px;">PHC Resident Doctors Activity Tracker</h2>
+      <p style="font-size:13px;color:rgba(255,255,255,.65);line-height:1.6;">Department of Community Health & PHC · Lagos State</p>
+    </div>
+
+    <!-- Section grid -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+
+      <div class="card">
+        <div class="card-hd" style="background:var(--gll);">
+          <h3 style="color:var(--gn);">📋 Duty Roster</h3>
+        </div>
+        <div class="card-bd" style="font-size:13px;line-height:1.7;color:var(--tx2);">
+          <p>Records where each doctor is posted each month.</p>
+          <ul style="margin:10px 0 0 16px;">
+            <li>Click <strong>+ Posting</strong> (top bar) to add a new entry</li>
+            <li>Set <strong>Designation</strong>: SR, R, or MO</li>
+            <li>Update <strong>Report Status</strong> to <em>Signed</em> once the consultant signs off</li>
+            <li>Filter by Year, Month, Station, Designation, or Report status</li>
+            <li>Use <strong>⬇ CSV</strong> to export the full roster</li>
+          </ul>
+          <div style="margin-top:12px;background:var(--gl);border-radius:8px;padding:9px 12px;font-size:12px;color:var(--gn);">
+            🎯 Target: ≥ 6 signed consultant reports per doctor per year
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd" style="background:#EDE9FE;">
+          <h3 style="color:#4C1D95;">🗓 Leave Schedule</h3>
+        </div>
+        <div class="card-bd" style="font-size:13px;line-height:1.7;color:var(--tx2);">
+          <p>Tracks all planned leave with live status.</p>
+          <ul style="margin:10px 0 0 16px;">
+            <li>Click <strong>+ Leave</strong> (top bar) to add a leave entry</li>
+            <li>Enter start &amp; end dates, type, and reliever doctor</li>
+            <li><strong>Status</strong> updates automatically: On leave / Upcoming / Completed</li>
+            <li>Filter by Year, Leave Type, Status, or Designation</li>
+          </ul>
+          <div style="margin-top:12px;background:#EDE9FE;border-radius:8px;padding:9px 12px;font-size:12px;color:#4C1D95;">
+            💡 Reliever field helps identify coverage for absent doctors
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd" style="background:#DBEAFE;">
+          <h3 style="color:#1E3A8A;">📖 Journal &amp; Seminar Presentations</h3>
+        </div>
+        <div class="card-bd" style="font-size:13px;line-height:1.7;color:var(--tx2);">
+          <p>Logs scheduled and completed presentations.</p>
+          <ul style="margin:10px 0 0 16px;">
+            <li>Click <strong>+ Activity</strong> → select <em>Journal Presentation</em> or <em>Seminar</em></li>
+            <li>Fill in Title, Date, Venue, and Discussant/Chairperson</li>
+            <li>Update Status: Scheduled → Completed or Missed</li>
+          </ul>
+          <div style="margin-top:12px;background:#DBEAFE;border-radius:8px;padding:9px 12px;font-size:12px;color:#1E3A8A;">
+            🎯 Target: ≥ 1 journal presentation + ≥ 1 seminar per doctor per year
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd" style="background:#DCFCE7;">
+          <h3 style="color:#14532D;">✅ Attendance Register</h3>
+        </div>
+        <div class="card-bd" style="font-size:13px;line-height:1.7;color:var(--tx2);">
+          <p>Tracks which doctors attended each session.</p>
+          <ul style="margin:10px 0 0 16px;">
+            <li>Click <strong>+ Record Attendance</strong> on the Attendance page</li>
+            <li>Select the session, then mark each doctor: <strong>Present / Absent / Excused</strong></li>
+            <li>The <strong>matrix view</strong> shows attendance across all sessions at a glance</li>
+            <li>Filter by session type, year, or individual session</li>
+          </ul>
+          <div style="margin-top:12px;background:#DCFCE7;border-radius:8px;padding:9px 12px;font-size:12px;color:#14532D;">
+            💡 Attendance rate is shown per doctor and per session
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd" style="background:#FEF3C7;">
+          <h3 style="color:#78350F;">🔬 Research &amp; Publications</h3>
+        </div>
+        <div class="card-bd" style="font-size:13px;line-height:1.7;color:var(--tx2);">
+          <p>Tracks research projects and publications.</p>
+          <ul style="margin:10px 0 0 16px;">
+            <li>Click <strong>+ Activity</strong> → select <em>Research / Publication</em></li>
+            <li>Select type: Research project, Journal publication, Conference paper, Thesis, or Book chapter</li>
+            <li>Status: In progress → Submitted → Published</li>
+          </ul>
+          <div style="margin-top:12px;background:#FEF3C7;border-radius:8px;padding:9px 12px;font-size:12px;color:#78350F;">
+            🎯 Target: ≥ 1 publication + ≥ 1 research project per doctor per year
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd" style="background:#F1F5F9;">
+          <h3 style="color:#1E293B;">📊 Statistics &amp; Performance</h3>
+        </div>
+        <div class="card-bd" style="font-size:13px;line-height:1.7;color:var(--tx2);">
+          <p>Shows performance scores based on annual targets.</p>
+          <ul style="margin:10px 0 0 16px;">
+            <li>Each of the 5 targets is worth <strong>20 points</strong> (max score = 100)</li>
+            <li>Filter by Year and Designation (SR / R / MO)</li>
+            <li>Use <strong>⬇ Export report</strong> to download as CSV</li>
+            <li>Leaderboard ranks doctors by overall score</li>
+          </ul>
+          <div style="margin-top:12px;background:#F1F5F9;border-radius:8px;padding:9px 12px;font-size:12px;color:#1E293B;">
+            ✓ Green = target met &nbsp; ✗ Red = below target
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Import & Data section -->
+    <div class="card" style="margin-bottom:14px;">
+      <div class="card-hd" style="background:#FFF7ED;">
+        <h3 style="color:#9A3412;">⬆ Importing Data (CSV Upload)</h3>
+      </div>
+      <div class="card-bd">
+        <p style="font-size:13px;color:var(--tx2);margin-bottom:12px;">Go to <strong>Import Data</strong> in the sidebar. Select the data type tab, then upload a CSV file.</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;">
+          <div style="background:var(--bg);border-radius:8px;padding:10px 12px;font-size:12px;">
+            <div style="font-weight:700;margin-bottom:4px;color:var(--tx);">📋 Duty Roster</div>
+            <code style="font-family:'DM Mono',monospace;font-size:10.5px;color:var(--gm);">DOCTOR, DESIGNATION,<br>MONTH, YEAR, STATION</code>
+          </div>
+          <div style="background:var(--bg);border-radius:8px;padding:10px 12px;font-size:12px;">
+            <div style="font-weight:700;margin-bottom:4px;color:var(--tx);">🗓 Leave Schedule</div>
+            <code style="font-family:'DM Mono',monospace;font-size:10.5px;color:var(--gm);">NAME, TYPE, START,<br>END, DURATION, RELIEVER</code>
+          </div>
+          <div style="background:var(--bg);border-radius:8px;padding:10px 12px;font-size:12px;">
+            <div style="font-weight:700;margin-bottom:4px;color:var(--tx);">📖 Journal / Seminar</div>
+            <code style="font-family:'DM Mono',monospace;font-size:10.5px;color:var(--gm);">DOCTOR, TITLE, DATE,<br>VENUE, STATUS</code>
+          </div>
+          <div style="background:var(--bg);border-radius:8px;padding:10px 12px;font-size:12px;">
+            <div style="font-weight:700;margin-bottom:4px;color:var(--tx);">🔬 Research</div>
+            <code style="font-family:'DM Mono',monospace;font-size:10.5px;color:var(--gm);">DOCTOR, TITLE, TYPE,<br>JOURNAL, STATUS</code>
+          </div>
+        </div>
+        <p style="font-size:12px;color:var(--tx3);margin-top:10px;">Click <strong>⬇ Download template</strong> on any tab to get a pre-formatted CSV file ready to fill in.</p>
+      </div>
+    </div>
+
+    <!-- Annual targets reference -->
+    <div class="card">
+      <div class="card-hd"><h3>🎯 Annual Targets Quick Reference</h3></div>
+      <div class="card-bd">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;">
+          <div style="text-align:center;background:#DBEAFE;border-radius:10px;padding:14px 10px;">
+            <div style="font-size:22px;font-weight:700;color:#1E3A8A;">6</div>
+            <div style="font-size:11px;font-weight:600;color:#1E3A8A;margin-top:3px;">Signed posting<br>reports / year</div>
+          </div>
+          <div style="text-align:center;background:#EDE9FE;border-radius:10px;padding:14px 10px;">
+            <div style="font-size:22px;font-weight:700;color:#4C1D95;">1</div>
+            <div style="font-size:11px;font-weight:600;color:#4C1D95;margin-top:3px;">Journal<br>presentation / year</div>
+          </div>
+          <div style="text-align:center;background:#CCFBF1;border-radius:10px;padding:14px 10px;">
+            <div style="font-size:22px;font-weight:700;color:#134E4A;">1</div>
+            <div style="font-size:11px;font-weight:600;color:#134E4A;margin-top:3px;">Seminar<br>presentation / year</div>
+          </div>
+          <div style="text-align:center;background:#FEF3C7;border-radius:10px;padding:14px 10px;">
+            <div style="font-size:22px;font-weight:700;color:#78350F;">1</div>
+            <div style="font-size:11px;font-weight:600;color:#78350F;margin-top:3px;">Publication<br>/ year</div>
+          </div>
+          <div style="text-align:center;background:#FCE7F3;border-radius:10px;padding:14px 10px;">
+            <div style="font-size:22px;font-weight:700;color:#881337;">1</div>
+            <div style="font-size:11px;font-weight:600;color:#881337;margin-top:3px;">Research<br>project / year</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 </div><!-- /cnt -->
 </div><!-- /main -->
 </div><!-- /app -->
@@ -734,6 +986,36 @@ tbody tr:last-child td{border-bottom:none;}
   </div>
 </div>
 
+<!-- ══ MODAL: Attendance ══ -->
+<div class="ov" id="m-attend">
+  <div class="modal" style="max-width:620px;">
+    <div class="mhd"><h2>Record Attendance</h2><button class="mx" onclick="closeM('m-attend')">×</button></div>
+    <div class="mbd">
+      <div class="fr">
+        <div class="fg"><label>Session type *</label>
+          <select id="at-kind" onchange="loadSessionsForAttend()">
+            <option value="journal">Journal Club</option>
+            <option value="seminar">Seminar</option>
+          </select>
+        </div>
+        <div class="fg"><label>Session *</label>
+          <select id="at-ses-sel"><option value="">— select session —</option></select>
+        </div>
+      </div>
+      <div class="fg"><label>Date of session</label><input type="date" id="at-date"/></div>
+      <div id="at-roster-wrap">
+        <label style="display:block;font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em;">Mark attendance for each doctor</label>
+        <div id="at-roster-list" style="display:grid;gap:6px;max-height:320px;overflow-y:auto;"></div>
+      </div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-s" onclick="closeM('m-attend')">Cancel</button>
+      <button class="btn btn-s btn-sm" onclick="markAll('present')">✓ All Present</button>
+      <button class="btn btn-p" onclick="saveAttendance()">Save attendance</button>
+    </div>
+  </div>
+</div>
+
 <datalist id="dl-d"></datalist>
 <datalist id="dl-s"></datalist>
 <div class="toasts" id="toasts"></div>
@@ -758,7 +1040,7 @@ let SB = null;       // supabase client
 let OFFLINE = false; // fallback to localStorage
 
 // In-memory DB (same shape as before — works offline and online)
-const DB = { posts: [], leave: [], acts: [] };
+const DB = { posts: [], leave: [], acts: [], attend: [] };
 
 // ── Hardcoded credentials — anon key is safe to embed ──
 const SUPABASE_URL = "https://hhkniwwrneranffbkftn.supabase.co";
@@ -797,7 +1079,6 @@ async function loadAll(){
     ls.classList.add("hidden");
     setSyncStatus("err","Load failed: "+(e.message||JSON.stringify(e)));
     toast("Failed to load data: "+(e.message||"unknown error"),"err");
-    // Fall back to localStorage
     OFFLINE=true;
     const seed=buildSeedData();
     DB.posts=lsGet('rmd2_p',seed.posts);
@@ -973,9 +1254,11 @@ const PMETA={
   leave:["Leave Schedule","Leave tracking with live status"],
   journal:["Journal Presentations","Journal club schedule & records"],
   seminar:["Seminars","Seminar presentation schedule & records"],
+  attendance:["Attendance Register","Journal & seminar session attendance tracking"],
   research:["Research & Publications","Research projects and publications"],
   other:["Other Activities","Clinical audits, outreach, CME and more"],
-  import:["Import Data","Upload CSV or manage all records"]
+  import:["Import Data","Upload CSV or manage all records"],
+  guide:["How to Use","Quick reference guide for using the app"]
 };
 
 function nav(el){
@@ -988,13 +1271,13 @@ function nav(el){
   document.getElementById("tb-t").textContent=t;
   document.getElementById("tb-s").textContent=s;
   initSel();
-  ({dashboard:renderDB,stats:renderStats,roster:renderRoster,leave:renderLeave,journal:()=>rAct("journal"),seminar:()=>rAct("seminar"),research:()=>rAct("research"),other:()=>rAct("other"),import:renderImport})[pg]?.();
+  ({dashboard:renderDB,stats:renderStats,roster:renderRoster,leave:renderLeave,journal:()=>rAct("journal"),seminar:()=>rAct("seminar"),attendance:renderAttendance,research:()=>rAct("research"),other:()=>rAct("other"),import:renderImport,guide:()=>{}})[pg]?.();
 }
 
 function renderActive(){
   const pg=document.querySelector(".ni.on")?.dataset.pg;
   if(!pg)return;
-  ({dashboard:renderDB,stats:renderStats,roster:renderRoster,leave:renderLeave,journal:()=>rAct("journal"),seminar:()=>rAct("seminar"),research:()=>rAct("research"),other:()=>rAct("other"),import:renderImport})[pg]?.();
+  ({dashboard:renderDB,stats:renderStats,roster:renderRoster,leave:renderLeave,journal:()=>rAct("journal"),seminar:()=>rAct("seminar"),attendance:renderAttendance,research:()=>rAct("research"),other:()=>rAct("other"),import:renderImport,guide:()=>{}})[pg]?.();
 }
 
 // ══════════════════════════════════════════
@@ -1002,7 +1285,7 @@ function renderActive(){
 // ══════════════════════════════════════════
 function initSel(){
   const yrs=getYrs();
-  ["gYear","ry","ly","jy","sy","rey","oy","sty"].forEach(id=>{
+  ["gYear","ry","ly","jy","sy","rey","oy","sty","at-yr"].forEach(id=>{
     const el=document.getElementById(id);if(!el)return;
     const cur=el.value,hasAll=id!=="ry";
     el.innerHTML=(hasAll?'<option value="all">All years</option>':'')+yrs.map(y=>`<option value="${y}">${y}</option>`).join("");
@@ -1413,7 +1696,12 @@ function clearAll(){clearActive();}
 
 function xCSV(type){
   let rows=[],header="";
-  if(type==="postings"){header="DOCTOR,DESIGNATION,MONTH,YEAR,STATION,REPORT_STATUS,CONSULTANT,NOTES";rows=DB.posts.map(p=>`${p.doctor},${p.desig||"R"},${p.month},${p.year},"${p.station}",${p.rs||"pending"},"${p.con||""}","${p.notes||""}"`);}
+  if(type==="attendance"){
+    header="DOCTOR,DESIGNATION,SESSION_TYPE,SESSION_TITLE,DATE,STATUS,NOTES";
+    rows=getAttend().map(a=>`${a.doctor},${a.desig||"R"},${a.kind},"${a.sessionTitle||""}",${a.sessionDate||""},${a.status},"${a.notes||""}"`);
+  } else if(type==="postings"){
+    header="DOCTOR,DESIGNATION,MONTH,YEAR,STATION,REPORT_STATUS,CONSULTANT,NOTES";
+    rows=DB.posts.map(p=>`${p.doctor},${p.desig||"R"},${p.month},${p.year},"${p.station}",${p.rs||"pending"},"${p.con||""}","${p.notes||""}"`);}
   else if(type==="leave"){header="NAME,TYPE,START,END,DURATION,RELIEVER,NOTES";rows=DB.leave.map(l=>`"${l.name}","${l.type}",${l.start},${l.end},"${l.dur||""}","${l.rel||""}","${l.notes||""}"`);}
   else{header="DOCTOR,TITLE,DATE,YEAR,STATUS,NOTES";rows=DB.acts.filter(a=>a.kind===type).map(a=>`${a.doctor},"${a.title}",${a.date||""},${a.year||""},"${a.status}","${a.notes||""}"`);}
   const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([[header,...rows].join("\n")],{type:"text/csv"}));a.download=`${type}_export.csv`;a.click();toast("CSV exported","ok");
@@ -1813,6 +2101,189 @@ function xStatsCSV(){
   const header=`DOCTOR,POSTINGS,SIGNED,TARGET_SIGNED(${T.signedReports}),MET_SIGNED,JOURNALS,J_DONE,TARGET_J(${T.journalPresentations}),MET_J,SEMINARS,S_DONE,TARGET_S(${T.seminarPresentations}),MET_S,RESEARCH_PROJECTS,TARGET_RES(${T.researchProjects}),MET_RES,PUBLICATIONS,TARGET_PUB(${T.publications}),MET_PUB,TARGETS_MET_OF_5,SCORE_/100`;
   const rows=stats.map(s=>`${s.doc},${s.dp.length},${s.signed},${T.signedReports},${s.metSign?1:0},${s.journals.length},${s.jDone},${T.journalPresentations},${s.metJourn?1:0},${s.seminars.length},${s.sDone},${T.seminarPresentations},${s.metSemin?1:0},${s.researchProjects},${T.researchProjects},${s.metRes?1:0},${s.pubs},${T.publications},${s.metPub?1:0},${s.targetsMet},${s.score}`);
   const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([[header,...rows].join("\n")],{type:"text/csv"}));a.download=`performance_report_${yr}.csv`;a.click();toast("Performance report exported","ok");
+}
+
+// ══════════════════════════════════════════
+// ATTENDANCE REGISTER
+// ══════════════════════════════════════════
+// DB.attend entries: {id, kind('journal'|'seminar'), sessionId, sessionTitle, sessionDate, doctor, desig, status('present'|'absent'|'excused'), notes}
+// Stored in localStorage key 'rmd2_att' (Supabase support can be added later)
+
+function getAttend(){return lsGet('rmd2_att',[]);}
+function saveAttend(arr){localStorage.setItem('rmd2_att',JSON.stringify(arr));}
+
+function renderAttendance(){
+  const type=document.getElementById("at-type")?.value||"all";
+  const yr=document.getElementById("at-yr")?.value||"all";
+  const session=document.getElementById("at-session")?.value||"all";
+  const desig=document.getElementById("at-desig")?.value||"all";
+  const q=(document.getElementById("at-q")?.value||"").toLowerCase();
+  const attend=getAttend();
+  // ── filter ──
+  let rows=[...attend];
+  if(type!=="all")rows=rows.filter(r=>r.kind===type);
+  if(yr!=="all")rows=rows.filter(r=>(r.sessionDate||"").startsWith(yr));
+  if(session!=="all")rows=rows.filter(r=>r.sessionId===session);
+  if(desig!=="all")rows=rows.filter(r=>(r.desig||"R")===desig);
+  if(q)rows=rows.filter(r=>r.doctor.toLowerCase().includes(q)||(r.sessionTitle||"").toLowerCase().includes(q));
+
+  // ── populate session dropdown ──
+  const sessEl=document.getElementById("at-session");
+  if(sessEl){
+    const allSessions=[...attend].filter(r=>type==="all"||r.kind===type);
+    const seen=new Map();
+    for(const r of allSessions)if(!seen.has(r.sessionId))seen.set(r.sessionId,r.sessionTitle||r.sessionId);
+    const cur=sessEl.value;
+    sessEl.innerHTML='<option value="all">All sessions</option>'+[...seen.entries()].map(([id,t])=>`<option value="${id}">${t}</option>`).join("");
+    if([...seen.keys()].includes(cur))sessEl.value=cur;
+  }
+
+  // ── summary metrics ──
+  const total=rows.length;
+  const present=rows.filter(r=>r.status==="present").length;
+  const absent=rows.filter(r=>r.status==="absent").length;
+  const excused=rows.filter(r=>r.status==="excused").length;
+  const pct=total>0?Math.round(present/total*100):0;
+  const uniqueDocs=new Set(rows.map(r=>r.doctor)).size;
+  const uniqueSess=new Set(rows.map(r=>r.sessionId)).size;
+  document.getElementById("at-mc").innerHTML=`
+    <div class="mc dk"><div class="mc-lb">Sessions tracked</div><div class="mc-v">${uniqueSess}</div><div class="mc-s">${type==="all"?"All types":type}</div></div>
+    <div class="mc"><div class="mc-lb">Total records</div><div class="mc-v">${total}</div><div class="mc-s">${uniqueDocs} doctors</div></div>
+    <div class="mc"><div class="mc-lb">Present</div><div class="mc-v" style="color:#166534;">${present}</div><div class="mc-s">${pct}% attendance rate</div></div>
+    <div class="mc"><div class="mc-lb">Absent</div><div class="mc-v" style="color:#DC2626;">${absent}</div><div class="mc-s">${total>0?Math.round(absent/total*100):0}%</div></div>
+    <div class="mc"><div class="mc-lb">Excused</div><div class="mc-v" style="color:#D97706;">${excused}</div><div class="mc-s">${total>0?Math.round(excused/total*100):0}%</div></div>
+  `;
+
+  // ── Matrix: doctors × sessions ──
+  const doctors=[...new Set(rows.map(r=>r.doctor))].sort();
+  const sessions=[...new Set(rows.map(r=>r.sessionId))];
+  // sort sessions by date
+  const sessInfo={};
+  for(const r of rows)if(!sessInfo[r.sessionId])sessInfo[r.sessionId]={title:r.sessionTitle||r.sessionId,date:r.sessionDate||"",kind:r.kind};
+  sessions.sort((a,b)=>(sessInfo[a].date||"").localeCompare(sessInfo[b].date||""));
+
+  const th=document.getElementById("at-th"),tb=document.getElementById("at-tb");
+  document.getElementById("at-ct").textContent=`${doctors.length} doctors · ${sessions.length} sessions`;
+
+  if(!rows.length){
+    th.innerHTML=""; tb.innerHTML=`<tr><td colspan="4" style="padding:32px;text-align:center;color:var(--tx3);">No attendance records yet — click <strong>+ Record Attendance</strong> to start</td></tr>`;
+  } else {
+    const desigBgMap={SR:"#DBEAFE",R:"#EDE9FE",MO:"#CCFBF1"};
+    const desigFgMap={SR:"#1E3A8A",R:"#4C1D95",MO:"#134E4A"};
+    // get designation for each doctor
+    const desigMap={};for(const p of DB.posts)if(!desigMap[p.doctor])desigMap[p.doctor]=p.desig||"R";
+
+    th.innerHTML=`<tr>
+      <th>Doctor</th><th>Desig.</th>
+      ${sessions.map(sid=>`<th style="font-size:10px;white-space:nowrap;max-width:90px;overflow:hidden;text-overflow:ellipsis;" title="${sessInfo[sid].title}">${sessInfo[sid].title.slice(0,18)}${sessInfo[sid].title.length>18?"…":""}<br><span style="font-weight:400;color:var(--tx3);">${sessInfo[sid].date?new Date(sessInfo[sid].date).toLocaleDateString("en-GB",{day:"2-digit",month:"short"}):""}</span></th>`).join("")}
+      <th>Attended</th><th>Rate</th>
+    </tr>`;
+
+    tb.innerHTML=doctors.map(doc=>{
+      const dsg=desigMap[doc]||"R";
+      const docRows=rows.filter(r=>r.doctor===doc);
+      const attended=docRows.filter(r=>r.status==="present").length;
+      const total=docRows.length;
+      const rate=total>0?Math.round(attended/total*100):0;
+      const rateCol=rate>=80?"#166534":rate>=50?"#D97706":"#DC2626";
+      const bySession={};for(const r of docRows)bySession[r.sessionId]=r;
+      return`<tr>
+        <td style="font-weight:600;white-space:nowrap;">${doc}</td>
+        <td><span class="badge" style="background:${desigBgMap[dsg]||"#F3F4F6"};color:${desigFgMap[dsg]||"#6B7280"};">${dsg}</span></td>
+        ${sessions.map(sid=>{
+          const r=bySession[sid];
+          if(!r)return`<td style="color:var(--tx3);text-align:center;">—</td>`;
+          const sym=r.status==="present"?`<span style="color:#166534;font-weight:700;">✓</span>`:r.status==="excused"?`<span style="color:#D97706;font-weight:700;">E</span>`:`<span style="color:#DC2626;font-weight:700;">A</span>`;
+          return`<td style="text-align:center;" title="${r.status}">${sym}</td>`;
+        }).join("")}
+        <td style="text-align:center;font-weight:600;">${attended}/${total}</td>
+        <td><span style="font-size:12px;font-weight:700;color:${rateCol};">${rate}%</span></td>
+      </tr>`;
+    }).join("");
+  }
+
+  // ── Detailed log ──
+  const logSorted=[...rows].sort((a,b)=>(b.sessionDate||"").localeCompare(a.sessionDate||""));
+  const stBdg={present:"b-gn",absent:"b-rd",excused:"b-am"};
+  document.getElementById("at-log-tb").innerHTML=logSorted.length?logSorted.map((r,i)=>{
+    const dsg=r.desig||"R";
+    return`<tr>
+      <td style="color:var(--tx3);font-size:12px;">${i+1}</td>
+      <td style="font-weight:600;">${r.doctor}</td>
+      <td><span class="badge ${({SR:"b-bl",R:"b-pu",MO:"b-tl"})[dsg]||"b-gy"}">${dsg}</span></td>
+      <td><span class="badge b-sl">${r.kind==="journal"?"Journal Club":"Seminar"}</span></td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.sessionTitle||""}">${r.sessionTitle||"—"}</td>
+      <td style="font-family:'DM Mono';font-size:12px;white-space:nowrap;">${r.sessionDate?new Date(r.sessionDate).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}):""}</td>
+      <td><span class="badge ${stBdg[r.status]||"b-gy"}">${r.status}</span></td>
+      <td style="color:var(--tx3);font-size:12px;">${r.notes||"—"}</td>
+      <td><button class="btn btn-d btn-sm btn-ic" onclick="delAttend('${r.id}')">✕</button></td>
+    </tr>`;
+  }).join(""):`<tr><td colspan="9" style="padding:24px;text-align:center;color:var(--tx3);">No records</td></tr>`;
+}
+
+function delAttend(id){
+  if(!confirm("Remove this attendance record?"))return;
+  const arr=getAttend().filter(r=>r.id!==id);
+  saveAttend(arr);renderAttendance();toast("Removed","ok");
+}
+
+// ── Populate sessions dropdown inside the modal ──
+function loadSessionsForAttend(){
+  const kind=document.getElementById("at-kind").value;
+  const sessions=DB.acts.filter(a=>a.kind===kind&&a.title);
+  const sel=document.getElementById("at-ses-sel");
+  sel.innerHTML='<option value="">— select session —</option>'+
+    sessions.map(s=>`<option value="${s.id}">${s.title}${s.date?" ("+new Date(s.date).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"})+")":""}</option>`).join("");
+  sel.onchange=function(){
+    const act=sessions.find(s=>s.id===this.value);
+    if(act&&act.date)document.getElementById("at-date").value=act.date;
+  };
+  buildDoctorChecklist();
+}
+
+function buildDoctorChecklist(){
+  const allDocs=[...new Set(DB.posts.map(p=>p.doctor))].sort();
+  const desigMap={};for(const p of DB.posts)if(!desigMap[p.doctor])desigMap[p.doctor]=p.desig||"R";
+  const desigBg={SR:"#DBEAFE",R:"#EDE9FE",MO:"#CCFBF1"};
+  const desigFg={SR:"#1E3A8A",R:"#4C1D95",MO:"#134E4A"};
+  document.getElementById("at-roster-list").innerHTML=allDocs.map(doc=>{
+    const dsg=desigMap[doc]||"R";
+    return`<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg);border-radius:8px;">
+      <span style="font-weight:600;flex:1;font-size:13px;">${doc}</span>
+      <span class="badge" style="background:${desigBg[dsg]};color:${desigFg[dsg]};font-size:10px;">${dsg}</span>
+      <select class="att-status" data-doc="${doc}" data-desig="${dsg}" style="font-size:12px;padding:4px 8px;border-radius:6px;">
+        <option value="present">✓ Present</option>
+        <option value="absent">✗ Absent</option>
+        <option value="excused">E Excused</option>
+      </select>
+    </div>`;
+  }).join("")||`<p style="color:var(--tx3);font-size:13px;">No doctors in roster yet</p>`;
+}
+
+function markAll(status){
+  document.querySelectorAll(".att-status").forEach(sel=>sel.value=status);
+}
+
+function saveAttendance(){
+  const kind=document.getElementById("at-kind").value;
+  const sesId=document.getElementById("at-ses-sel").value;
+  const date=document.getElementById("at-date").value;
+  if(!sesId){toast("Please select a session","err");return;}
+  const sesTitle=document.getElementById("at-ses-sel").selectedOptions[0]?.text||sesId;
+  const selects=document.querySelectorAll(".att-status");
+  if(!selects.length){toast("No doctors found in roster","err");return;}
+  const arr=getAttend();
+  // remove existing records for this session to allow re-marking
+  const cleaned=arr.filter(r=>!(r.sessionId===sesId&&r.kind===kind));
+  const newRecords=[...selects].map(sel=>({
+    id:uid(),kind,sessionId:sesId,sessionTitle:sesTitle.split(" (")[0],
+    sessionDate:date,doctor:sel.dataset.doc,desig:sel.dataset.desig||"R",
+    status:sel.value,notes:""
+  }));
+  saveAttend([...cleaned,...newRecords]);
+  closeM("m-attend");
+  toast(`Attendance saved — ${newRecords.length} records`,"ok");
+  renderAttendance();
 }
 
 // ══════════════════════════════════════════
