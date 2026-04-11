@@ -590,6 +590,7 @@ tbody tr:last-child td{border-bottom:none;}
     <button class="btn btn-s btn-sm" onclick="setImpType('seminar',this)" id="itab-seminar">🎤 Seminars</button>
     <button class="btn btn-s btn-sm" onclick="setImpType('research',this)" id="itab-research">🔬 Research & Pubs</button>
     <button class="btn btn-s btn-sm" onclick="setImpType('other',this)" id="itab-other">📌 Other Activities</button>
+    <button class="btn btn-s btn-sm" onclick="setImpType('attendance',this)" id="itab-attendance">✅ Attendance</button>
   </div>
 
   <div class="grid-imp">
@@ -832,6 +833,10 @@ tbody tr:last-child td{border-bottom:none;}
           <div style="background:var(--bg);border-radius:8px;padding:10px 12px;font-size:12px;">
             <div style="font-weight:700;margin-bottom:4px;color:var(--tx);">🔬 Research</div>
             <code style="font-family:'DM Mono',monospace;font-size:10.5px;color:var(--gm);">DOCTOR, TITLE, TYPE,<br>JOURNAL, STATUS</code>
+          </div>
+          <div style="background:var(--bg);border-radius:8px;padding:10px 12px;font-size:12px;">
+            <div style="font-weight:700;margin-bottom:4px;color:var(--tx);">✅ Attendance</div>
+            <code style="font-family:'DM Mono',monospace;font-size:10.5px;color:var(--gm);">DOCTOR, SESSION_TYPE,<br>SESSION_TITLE, DATE, STATUS</code>
           </div>
         </div>
         <p style="font-size:12px;color:var(--tx3);margin-top:10px;">Click <strong>⬇ Download template</strong> on any tab to get a pre-formatted CSV file ready to fill in.</p>
@@ -1576,6 +1581,70 @@ const IMP_CFG={
     },
     commit:(rows)=>{DB.acts=[...DB.acts,...rows];},
     getData:()=>DB.acts.filter(a=>a.kind==="other").slice(-80).reverse()
+  },
+  attendance:{
+    title:"Upload Attendance Records CSV",
+    hint:"<code>DOCTOR, SESSION_TYPE, SESSION_TITLE, DATE, STATUS</code>",
+    guide:[
+      ["DOCTOR","ADEBANJO","Required — must match a doctor in the roster"],
+      ["DESIGNATION","SR / R / MO","Optional (auto-filled from roster)"],
+      ["SESSION_TYPE","journal / seminar","Required"],
+      ["SESSION_TITLE","Randomized Controlled Trials","Required"],
+      ["SESSION_ID","(leave blank)","Optional — links to existing session"],
+      ["DATE","2026-03-04","Required (YYYY-MM-DD)"],
+      ["STATUS","present / absent / excused","Required"],
+      ["NOTES","","Optional"]
+    ],
+    tplRows:[
+      "DOCTOR,DESIGNATION,SESSION_TYPE,SESSION_TITLE,DATE,STATUS,NOTES",
+      "ADEBANJO,SR,journal,Randomized Controlled Trials,2026-03-04,present,",
+      "BASHIR,SR,journal,Randomized Controlled Trials,2026-03-04,absent,On call",
+      "SONOIKI,SR,seminar,Community Diagnosis Principles,2026-01-22,present,",
+      "OGUNYEMI,SR,seminar,Community Diagnosis Principles,2026-01-22,excused,Leave"
+    ],
+    tplName:"attendance_template.csv",
+    recTitle:"Attendance records",
+    thead:"<tr><th>Doctor</th><th>Desig.</th><th>Type</th><th>Session</th><th>Date</th><th>Status</th><th></th></tr>",
+    rowFn:(r)=>{
+      const dsgMap={SR:"b-bl",R:"b-pu",MO:"b-tl"};
+      const stMap={present:"b-gn",absent:"b-rd",excused:"b-am"};
+      return`<tr>
+        <td style="font-weight:600;">${r.doctor}</td>
+        <td><span class="badge ${dsgMap[r.desig]||"b-gy"}">${r.desig||"R"}</span></td>
+        <td><span class="badge b-sl">${r.kind==="journal"?"Journal":"Seminar"}</span></td>
+        <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.sessionTitle||"—"}</td>
+        <td style="font-family:'DM Mono';font-size:12px;">${r.sessionDate||"—"}</td>
+        <td><span class="badge ${stMap[r.status]||"b-gy"}">${r.status}</span></td>
+        <td><button class="btn btn-d btn-sm btn-ic" onclick="delAttendById('${r.id}')">✕</button></td>
+      </tr>`;
+    },
+    parse:(lines,hdrs)=>{
+      const iD=fi(hdrs,"DOCTOR"),iDsg=fi(hdrs,"DESIG"),iKind=fi(hdrs,"TYPE"),iTitle=fi(hdrs,"TITLE"),iId=fi(hdrs,"ID"),iDate=fi(hdrs,"DATE"),iS=fi(hdrs,"STATUS"),iN=fi(hdrs,"NOTE");
+      if([iD,iKind,iTitle,iDate,iS].some(i=>i<0))return null;
+      // build desig lookup from DB.posts
+      const desigMap={};for(const p of DB.posts)if(!desigMap[p.doctor])desigMap[p.doctor]=p.desig||"R";
+      return lines.slice(1).map(l=>{
+        const c=splitCSV(l);
+        const doc=(c[iD]||"").toUpperCase().trim();
+        if(!doc)return null;
+        const kind=(c[iKind]||"journal").toLowerCase().trim();
+        const sessionTitle=c[iTitle]||"";
+        const sessionDate=c[iDate]||"";
+        // find matching session ID from DB.acts, or generate one from title+date
+        const matchedAct=DB.acts.find(a=>a.kind===kind&&a.title===sessionTitle);
+        const sessionId=iId>=0&&c[iId]?c[iId]:matchedAct?.id||(sessionTitle.slice(0,20).replace(/\s+/g,"-")+"-"+sessionDate);
+        const desig=iDsg>=0&&c[iDsg]?c[iDsg].toUpperCase():desigMap[doc]||"R";
+        const status=(c[iS]||"present").toLowerCase().trim();
+        return{id:uid(),kind,sessionId,sessionTitle,sessionDate,doctor:doc,desig,status,notes:c[iN]||""};
+      }).filter(Boolean);
+    },
+    commit:(rows)=>{
+      const existing=getAttend();
+      // upsert: remove existing for same doctor+session, then add new
+      const filtered=existing.filter(e=>!rows.some(r=>r.doctor===e.doctor&&r.sessionId===e.sessionId));
+      saveAttend([...filtered,...rows]);
+    },
+    getData:()=>getAttend().slice(-120).reverse()
   }
 };
 
@@ -1636,23 +1705,31 @@ function parseCSV(txt){
 async function doImport(){
   if(!pending.length)return;
   IMP_CFG[impType].commit(pending);
-  // Map to correct Supabase table rows
-  const tableMap={roster:"postings",leave:"leave_records",journal:"activities",seminar:"activities",research:"activities",other:"activities"};
-  const rowMap={
-    roster:rows=>rows.map(postToRow),
-    leave:rows=>rows.map(leaveToRow),
-    journal:rows=>rows.map(actToRow),seminar:rows=>rows.map(actToRow),
-    research:rows=>rows.map(actToRow),other:rows=>rows.map(actToRow)
-  };
-  try{
-    await bulkInsert(tableMap[impType], rowMap[impType](pending));
-  }catch(e){ /* bulkInsert already shows error toast */ }
+  // Attendance is localStorage-only — skip Supabase upload
+  if(impType!=="attendance"){
+    const tableMap={roster:"postings",leave:"leave_records",journal:"activities",seminar:"activities",research:"activities",other:"activities"};
+    const rowMap={
+      roster:rows=>rows.map(postToRow),
+      leave:rows=>rows.map(leaveToRow),
+      journal:rows=>rows.map(actToRow),seminar:rows=>rows.map(actToRow),
+      research:rows=>rows.map(actToRow),other:rows=>rows.map(actToRow)
+    };
+    try{
+      await bulkInsert(tableMap[impType], rowMap[impType](pending));
+    }catch(e){ /* bulkInsert already shows error toast */ }
+  }
   initSel();renderImpRecords();
   document.getElementById("up-pv").style.display="none";
   document.getElementById("up-ac").style.display="none";
   document.getElementById("fu").value="";
   toast(`${pending.length} records imported`,"ok");
   pending=[];
+}
+
+function delAttendById(id){
+  if(!confirm("Remove this record?"))return;
+  saveAttend(getAttend().filter(r=>r.id!==id));
+  renderImpRecords();toast("Removed","ok");
 }
 
 function cancelImp(){
@@ -1674,8 +1751,9 @@ function delPost(id){
   save("postings",null,id);renderImpRecords();toast("Removed","ok");
 }
 async function clearActive(){
-  const labels={roster:"all posting",leave:"all leave",journal:"all journal",seminar:"all seminar",research:"all research",other:"all other activity"};
+  const labels={roster:"all posting",leave:"all leave",journal:"all journal",seminar:"all seminar",research:"all research",other:"all other activity",attendance:"all attendance"};
   if(!confirm(`Delete ${labels[impType]} records?`))return;
+  if(impType==="attendance"){saveAttend([]);renderImpRecords();toast("Cleared","ok");return;}
   const tableMap={roster:"postings",leave:"leave_records",journal:"activities",seminar:"activities",research:"activities",other:"activities"};
   if(!OFFLINE&&SB){
     setSyncStatus("syncing","Deleting…");
