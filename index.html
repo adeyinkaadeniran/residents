@@ -377,7 +377,7 @@ tbody tr:last-child td{border-bottom:none;}
     <label>Station</label><select id="rst" onchange="renderRoster()"><option value="all">All stations</option></select>
     <label>Designation</label>
     <select id="rdesig" onchange="renderRoster()">
-      <option value="all">All</option><option value="SR">SR</option><option value="R">R</option><option value="MO">MO</option>
+      <option value="all">All</option><option value="SR">SR</option><option value="R">R</option><option value="MO">MO</option><option value="PMO">PMO</option>
     </select>
     <label>Report</label>
     <select id="rrs" onchange="renderRoster()">
@@ -402,7 +402,7 @@ tbody tr:last-child td{border-bottom:none;}
     </select>
     <label>Designation</label>
     <select id="ldesig" onchange="renderLeave()">
-      <option value="all">All</option><option value="SR">SR</option><option value="R">R</option><option value="MO">MO</option>
+      <option value="all">All</option><option value="SR">SR</option><option value="R">R</option><option value="MO">MO</option><option value="PMO">PMO</option>
     </select>
     <label>Status</label>
     <select id="ls" onchange="renderLeave()">
@@ -500,7 +500,7 @@ tbody tr:last-child td{border-bottom:none;}
     <label>Year</label><select id="sty" onchange="renderStats()"><option value="all">All years</option></select>
     <label>Designation</label>
     <select id="stdesig" onchange="renderStats()">
-      <option value="all">All</option><option value="SR">SR</option><option value="R">R</option><option value="MO">MO</option>
+      <option value="all">All</option><option value="SR">SR</option><option value="R">R</option><option value="MO">MO</option><option value="PMO">PMO</option>
     </select>
     <label>Sort by</label>
     <select id="st-sort" onchange="renderStats()">
@@ -555,16 +555,17 @@ tbody tr:last-child td{border-bottom:none;}
   <div class="card" style="margin-bottom:14px;">
     <div class="card-hd">
       <h3>Performance leaderboard</h3>
-      <span style="font-size:11.5px;color:var(--tx3);">Score = weighted sum across all activity domains</span>
+      <span style="font-size:11.5px;color:var(--tx3);">Click a doctor's name to view their performance card</span>
     </div>
     <div class="tw"><table>
       <thead><tr>
         <th>Rank</th><th>Doctor</th><th>Designation</th>
         <th title="Reports signed (target ≥6)">Sign-offs</th>
-        <th title="Journal presentations (target ≥1)">Journal pres.</th>
-        <th title="Seminar presentations (target ≥1)">Seminar pres.</th>
+        <th title="Journal & Case presentations (target ≥1)">Journal/Case</th>
+        <th title="Seminar presentations (target ≥1)">Seminar</th>
         <th title="Publications (target ≥1)">Publications</th>
-        <th title="Research projects (target ≥1)">Research proj.</th>
+        <th title="Research projects (target ≥1)">Research</th>
+        <th title="Sessions attended / total (no score)">Attendance</th>
         <th>Targets met</th>
         <th>Score /100</th>
       </tr></thead>
@@ -572,12 +573,8 @@ tbody tr:last-child td{border-bottom:none;}
     </table></div>
   </div>
 
-  <!-- Doctor cards -->
-  <div class="card-hd" style="background:var(--surf);border:1px solid var(--blt);border-radius:var(--rl) var(--rl) 0 0;padding:13px 17px;">
-    <h3>Doctor performance cards</h3>
-    <span style="font-size:11.5px;color:var(--tx3);">Detailed breakdown per doctor</span>
-  </div>
-  <div id="st-cards" class="grid-2" style="background:var(--bg);padding:14px;border:1px solid var(--blt);border-top:none;border-radius:0 0 var(--rl) var(--rl);gap:12px;"></div>
+  <!-- Inline expandable doctor card (shown on name click) -->
+  <div id="st-card-panel" style="display:none;margin-bottom:14px;"></div>
 </div>
 
 <!-- IMPORT -->
@@ -651,14 +648,15 @@ tbody tr:last-child td{border-bottom:none;}
     <label>Type</label>
     <select id="at-type" onchange="renderAttendance()">
       <option value="all">All sessions</option>
-      <option value="journal">Journal Club</option>
+      <option value="journal">Journal / Case</option>
       <option value="seminar">Seminar</option>
+      <option value="case">Case Presentation</option>
     </select>
     <label>Year</label><select id="at-yr" onchange="renderAttendance()"><option value="all">All years</option></select>
     <label>Session</label><select id="at-session" onchange="renderAttendance()"><option value="all">All sessions</option></select>
     <label>Designation</label>
     <select id="at-desig" onchange="renderAttendance()">
-      <option value="all">All</option><option value="SR">SR</option><option value="R">R</option><option value="MO">MO</option>
+      <option value="all">All</option><option value="SR">SR</option><option value="R">R</option><option value="MO">MO</option><option value="PMO">PMO</option>
     </select>
     <div class="sw" style="margin-left:auto;"><input type="text" id="at-q" placeholder="Search doctor…" oninput="renderAttendance()"/></div>
     <button class="btn btn-p btn-sm" onclick="openM('m-attend');loadSessionsForAttend();">+ Record Attendance</button>
@@ -891,6 +889,7 @@ tbody tr:last-child td{border-bottom:none;}
             <option value="SR">SR — Senior Registrar</option>
             <option value="R">R — Registrar</option>
             <option value="MO">MO — Medical Officer</option>
+            <option value="PMO">PMO — Principal Medical Officer</option>
           </select>
         </div>
       </div>
@@ -1001,6 +1000,7 @@ tbody tr:last-child td{border-bottom:none;}
           <select id="at-kind" onchange="loadSessionsForAttend()">
             <option value="journal">Journal Club</option>
             <option value="seminar">Seminar</option>
+            <option value="case">Case Presentation</option>
           </select>
         </div>
         <div class="fg"><label>Session *</label>
@@ -1017,6 +1017,48 @@ tbody tr:last-child td{border-bottom:none;}
       <button class="btn btn-s" onclick="closeM('m-attend')">Cancel</button>
       <button class="btn btn-s btn-sm" onclick="markAll('present')">✓ All Present</button>
       <button class="btn btn-p" onclick="saveAttendance()">Save attendance</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Edit Attendance Record ══ -->
+<div class="ov" id="m-attend-edit">
+  <div class="modal" style="max-width:480px;">
+    <div class="mhd"><h2>Edit Attendance Record</h2><button class="mx" onclick="closeM('m-attend-edit')">×</button></div>
+    <div class="mbd">
+      <input type="hidden" id="ae-id"/>
+      <div class="fr">
+        <div class="fg"><label>Doctor</label><input id="ae-doc" readonly style="background:var(--surf2);color:var(--tx2);"/></div>
+        <div class="fg"><label>Designation</label>
+          <select id="ae-desig">
+            <option value="SR">SR</option><option value="R">R</option>
+            <option value="MO">MO</option><option value="PMO">PMO</option>
+          </select>
+        </div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>Session type</label>
+          <select id="ae-kind">
+            <option value="journal">Journal / Case</option>
+            <option value="seminar">Seminar</option>
+            <option value="case">Case Presentation</option>
+          </select>
+        </div>
+        <div class="fg"><label>Date</label><input type="date" id="ae-date"/></div>
+      </div>
+      <div class="fg"><label>Session title</label><input id="ae-title" placeholder="Leave blank if not applicable"/></div>
+      <div class="fg"><label>Status *</label>
+        <select id="ae-status">
+          <option value="present">✓ Present</option>
+          <option value="absent">✗ Absent</option>
+          <option value="excused">E Excused</option>
+        </select>
+      </div>
+      <div class="fg"><label>Notes</label><textarea id="ae-notes" rows="2" placeholder="Optional notes"></textarea></div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-s" onclick="closeM('m-attend-edit')">Cancel</button>
+      <button class="btn btn-p" onclick="saveAttendEdit()">Save changes</button>
     </div>
   </div>
 </div>
@@ -1606,7 +1648,7 @@ const IMP_CFG={
     recTitle:"Attendance records",
     thead:"<tr><th>Doctor</th><th>Desig.</th><th>Type</th><th>Session</th><th>Date</th><th>Status</th><th></th></tr>",
     rowFn:(r)=>{
-      const dsgMap={SR:"b-bl",R:"b-pu",MO:"b-tl"};
+      const dsgMap={SR:"b-bl",R:"b-pu",MO:"b-tl",PMO:"b-am"};
       const stMap={present:"b-gn",absent:"b-rd",excused:"b-am"};
       return`<tr>
         <td style="font-weight:600;">${r.doctor}</td>
@@ -1920,55 +1962,59 @@ function calcDocStats(yr){
   const posts=yr==="all"?DB.posts:DB.posts.filter(p=>p.year===yr);
   const acts=yr==="all"?DB.acts:DB.acts.filter(a=>(a.year||a.date?.slice(0,4))===yr);
   const allDocs=[...new Set([...posts.map(p=>p.doctor),...acts.map(a=>a.doctor)])].sort();
-  // build designation map from posts
   const desigMap={};
   for(const p of DB.posts){if(!desigMap[p.doctor])desigMap[p.doctor]=p.desig||"R";}
+  // attendance: treat case same as journal
+  const allAttend=getAttend();
+  const attendYr=yr==="all"?allAttend:allAttend.filter(r=>(r.sessionDate||"").startsWith(yr));
   return allDocs.map(doc=>{
     const dp=posts.filter(p=>p.doctor===doc);
     const da=acts.filter(a=>a.doctor===doc);
     const signed=dp.filter(p=>p.rs==="completed").length;
-    const journals=da.filter(a=>a.kind==="journal");
+    // treat case as journal
+    const journals=da.filter(a=>a.kind==="journal"||a.kind==="case");
     const seminars=da.filter(a=>a.kind==="seminar");
     const research=da.filter(a=>a.kind==="research");
     const other=da.filter(a=>a.kind==="other");
     const jDone=journals.filter(a=>a.status==="Completed").length;
     const sDone=seminars.filter(a=>a.status==="Completed").length;
-    // Publications = published items; research projects = all research entries regardless of status
     const pubs=research.filter(a=>["Published","Submitted"].includes(a.status)).length;
-    const researchProjects=research.length; // any research involvement counts
+    const researchProjects=research.length;
     const oDone=other.filter(a=>a.status==="Completed").length;
     const totalActs=da.length;
     const totalDone=jDone+sDone+pubs+oDone;
     const compRate=totalActs>0?Math.round(totalDone/totalActs*100):0;
 
-    // TARGET ACHIEVEMENT (per-year targets, capped at target value for scoring)
+    // Attendance tracking (no score — informational only)
+    const docAttend=attendYr.filter(r=>r.doctor===doc);
+    const atPresent=docAttend.filter(r=>r.status==="present").length;
+    // total sessions that happened (journal+case+seminar records for this doctor)
+    const atTotal=docAttend.length;
+    const atRate=atTotal>0?Math.round(atPresent/atTotal*100):null;
+
     const T=TARGETS;
     const tSign  =Math.min(signed, T.signedReports);
     const tJourn =Math.min(jDone,  T.journalPresentations);
     const tSemin =Math.min(sDone,  T.seminarPresentations);
     const tPub   =Math.min(pubs,   T.publications);
     const tRes   =Math.min(researchProjects, T.researchProjects);
-
-    // Score: each target domain worth equal 20 points = 100 total
     const scoreSign  =Math.round((tSign /T.signedReports)*20);
     const scoreJourn =Math.round((tJourn/T.journalPresentations)*20);
     const scoreSemin =Math.round((tSemin/T.seminarPresentations)*20);
     const scorePub   =Math.round((tPub  /T.publications)*20);
     const scoreRes   =Math.round((tRes  /T.researchProjects)*20);
     const score=Math.min(100,scoreSign+scoreJourn+scoreSemin+scorePub+scoreRes);
-
-    // Target met flags
     const metSign  =signed>=T.signedReports;
     const metJourn =jDone>=T.journalPresentations;
     const metSemin =sDone>=T.seminarPresentations;
     const metPub   =pubs>=T.publications;
     const metRes   =researchProjects>=T.researchProjects;
     const targetsMet=[metSign,metJourn,metSemin,metPub,metRes].filter(Boolean).length;
-
     return{doc,desig:desigMap[doc]||"R",dp,signed,journals,seminars,research,other,jDone,sDone,pubs,researchProjects,oDone,
       totalActs,totalDone,compRate,score,
       scoreSign,scoreJourn,scoreSemin,scorePub,scoreRes,
-      metSign,metJourn,metSemin,metPub,metRes,targetsMet};
+      metSign,metJourn,metSemin,metPub,metRes,targetsMet,
+      atPresent,atTotal,atRate};
   });
 }
 
@@ -2112,64 +2158,96 @@ function renderStats(){
     const icon=met?`<span style="color:#166534;font-size:12px;">✓</span>`:`<span style="color:#DC2626;font-size:11px;">✗</span>`;
     return`<td>${icon} <span style="font-weight:600;color:${col};">${actual}</span><span style="color:var(--tx3);font-size:11px;">/${target}</span></td>`;
   };
-  const desigBadgeLb={SR:"b-bl",R:"b-pu",MO:"b-tl"};
+  const desigBadgeLb={SR:"b-bl",R:"b-pu",MO:"b-tl",PMO:"b-am"};
+
   document.getElementById("st-lb").innerHTML=stats.map((s,i)=>{
     const rankClass=i===0?"rank-1":i===1?"rank-2":i===2?"rank-3":"rank-n";
     const scoreColor=s.score>=80?"#166534":s.score>=50?"#D97706":"#DC2626";
+    const atCell=s.atTotal>0
+      ?`<td style="text-align:center;"><span style="font-weight:600;color:${s.atRate>=80?"#166534":s.atRate>=50?"#D97706":"#DC2626"};">${s.atPresent}</span><span style="color:var(--tx3);font-size:11px;">/${s.atTotal}</span></td>`
+      :`<td style="text-align:center;color:var(--tx3);font-size:12px;">—</td>`;
     return`<tr>
       <td><span class="rank-badge ${rankClass}">${i+1}</span></td>
-      <td style="font-weight:600;white-space:nowrap;">${s.doc}</td>
+      <td><button class="btn-link" onclick="showDocCard('${s.doc}')" style="font-weight:600;background:none;border:none;cursor:pointer;color:var(--tx);text-decoration:underline;text-underline-offset:3px;font-size:13px;font-family:inherit;padding:0;">${s.doc}</button></td>
       <td><span class="badge ${desigBadgeLb[s.desig]||"b-gy"}">${s.desig||"R"}</span></td>
       ${tCell(s.metSign,s.signed,T.signedReports)}
       ${tCell(s.metJourn,s.jDone,T.journalPresentations)}
       ${tCell(s.metSemin,s.sDone,T.seminarPresentations)}
       ${tCell(s.metPub,s.pubs,T.publications)}
       ${tCell(s.metRes,s.researchProjects,T.researchProjects)}
+      ${atCell}
       <td><span class="badge ${s.targetsMet===5?"b-gn":s.targetsMet>=3?"b-am":"b-rd"}">${s.targetsMet}/5 targets</span></td>
       <td><span style="font-size:16px;font-weight:700;color:${scoreColor};">${s.score}</span><span style="font-size:11px;color:var(--tx3);">/100</span></td>
     </tr>`;
-  }).join("")||`<tr><td colspan="10" style="padding:32px;text-align:center;color:var(--tx3);">No data</td></tr>`;
+  }).join("")||`<tr><td colspan="11" style="padding:32px;text-align:center;color:var(--tx3);">No data</td></tr>`;
 
-  // Doctor cards
-  document.getElementById("st-cards").innerHTML=stats.map(s=>{
-    const scoreColor=s.score>=80?"#166534":s.score>=50?"#D97706":"#DC2626";
-    const r=22,circ=2*Math.PI*r,dash=(circ*(s.score/100)).toFixed(1),gap=circ.toFixed(1),off=(circ/4).toFixed(1);
-    const domains=[
-      {lb:"Sign-offs",val:s.signed,tgt:T.signedReports,met:s.metSign,col:"#1E3A8A"},
-      {lb:"Journal",val:s.jDone,tgt:T.journalPresentations,met:s.metJourn,col:"#4C1D95"},
-      {lb:"Seminar",val:s.sDone,tgt:T.seminarPresentations,met:s.metSemin,col:"#134E4A"},
-      {lb:"Publication",val:s.pubs,tgt:T.publications,met:s.metPub,col:"#78350F"},
-      {lb:"Research",val:s.researchProjects,tgt:T.researchProjects,met:s.metRes,col:"#881337"},
-    ];
-    return`<div class="doc-card">
-      <div class="doc-card-top">
-        <svg class="score-ring" viewBox="0 0 56 56">
-          <circle cx="28" cy="28" r="${r}" stroke="#EAE7E0" stroke-width="5" fill="none"/>
-          <circle cx="28" cy="28" r="${r}" stroke="${scoreColor}" stroke-width="5" fill="none"
-            stroke-dasharray="${dash} ${gap}" stroke-dashoffset="${off}" transform="rotate(-90 28 28)"/>
-          <text x="28" y="31" text-anchor="middle" font-size="12" font-weight="700" fill="${scoreColor}" font-family="DM Sans,sans-serif">${s.score}</text>
-        </svg>
-        <div style="flex:1;min-width:0;">
-          <div class="doc-name">${s.doc} <span class="badge ${desigBadgeLb[s.desig]||"b-gy"}" style="font-size:10px;padding:1px 6px;vertical-align:middle;">${s.desig||"R"}</span></div>
-          <div class="doc-role">${s.dp.length} postings · ${s.totalActs} activities</div>
+  // Store stats globally for card rendering on click
+  window._lastStats=stats;
+}
+
+function showDocCard(docName){
+  const stats=window._lastStats||[];
+  const s=stats.find(x=>x.doc===docName);
+  const panel=document.getElementById("st-card-panel");
+  if(!s||!panel)return;
+  // Toggle off if same doctor clicked again
+  if(panel.dataset.doc===docName&&panel.style.display!=="none"){
+    panel.style.display="none";panel.dataset.doc="";return;
+  }
+  panel.dataset.doc=docName;
+  const T=TARGETS;
+  const desigBadgeLb={SR:"b-bl",R:"b-pu",MO:"b-tl",PMO:"b-am"};
+  const scoreColor=s.score>=80?"#166534":s.score>=50?"#D97706":"#DC2626";
+  const r=22,circ=2*Math.PI*r,dash=(circ*(s.score/100)).toFixed(1),gap=circ.toFixed(1),off=(circ/4).toFixed(1);
+  const domains=[
+    {lb:"Sign-offs",val:s.signed,tgt:T.signedReports,met:s.metSign,col:"#1E3A8A"},
+    {lb:"Journal/Case",val:s.jDone,tgt:T.journalPresentations,met:s.metJourn,col:"#4C1D95"},
+    {lb:"Seminar",val:s.sDone,tgt:T.seminarPresentations,met:s.metSemin,col:"#134E4A"},
+    {lb:"Publication",val:s.pubs,tgt:T.publications,met:s.metPub,col:"#78350F"},
+    {lb:"Research",val:s.researchProjects,tgt:T.researchProjects,met:s.metRes,col:"#881337"},
+  ];
+  const atBlock=s.atTotal>0
+    ?`<div style="margin-top:12px;padding:10px 12px;background:var(--bg);border-radius:8px;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:11px;font-weight:600;color:var(--tx2);min-width:78px;">Attendance</span>
+        <div style="flex:1;background:var(--surf2);border-radius:3px;height:6px;overflow:hidden;">
+          <div style="width:${s.atRate}%;height:100%;background:${s.atRate>=80?"#166534":s.atRate>=50?"#D97706":"#DC2626"};border-radius:3px;transition:width .4s;"></div>
         </div>
-        <span class="badge ${s.targetsMet===5?"b-gn":s.targetsMet>=3?"b-am":"b-rd"}" style="align-self:flex-start;">${s.targetsMet}/5</span>
+        <span style="font-size:11px;font-weight:600;min-width:56px;text-align:right;color:${s.atRate>=80?"#166534":s.atRate>=50?"#D97706":"#9CA3AF"};">${s.atPresent}/${s.atTotal} sessions</span>
+        <span style="font-size:11px;color:var(--tx3);">(no score)</span>
+      </div>`
+    :`<div style="margin-top:12px;padding:8px 12px;background:var(--bg);border-radius:8px;font-size:12px;color:var(--tx3);">No attendance records yet</div>`;
+  panel.innerHTML=`<div class="doc-card" style="border:2px solid var(--gm);position:relative;">
+    <button onclick="document.getElementById('st-card-panel').style.display='none'" style="position:absolute;top:12px;right:12px;background:none;border:none;font-size:18px;cursor:pointer;color:var(--tx3);line-height:1;">×</button>
+    <div class="doc-card-top">
+      <svg class="score-ring" viewBox="0 0 56 56">
+        <circle cx="28" cy="28" r="${r}" stroke="#EAE7E0" stroke-width="5" fill="none"/>
+        <circle cx="28" cy="28" r="${r}" stroke="${scoreColor}" stroke-width="5" fill="none"
+          stroke-dasharray="${dash} ${gap}" stroke-dashoffset="${off}" transform="rotate(-90 28 28)"/>
+        <text x="28" y="31" text-anchor="middle" font-size="12" font-weight="700" fill="${scoreColor}" font-family="DM Sans,sans-serif">${s.score}</text>
+      </svg>
+      <div style="flex:1;min-width:0;">
+        <div class="doc-name">${s.doc} <span class="badge ${desigBadgeLb[s.desig]||"b-gy"}" style="font-size:10px;padding:1px 6px;vertical-align:middle;">${s.desig||"R"}</span></div>
+        <div class="doc-role">${s.dp.length} postings · ${s.totalActs} activities · ${s.targetsMet}/5 targets met</div>
       </div>
-      <div style="display:flex;flex-direction:column;gap:6px;">
-        ${domains.map(d=>{
-          const pct=Math.min(100,Math.round((d.val/d.tgt)*100));
-          return`<div style="display:flex;align-items:center;gap:8px;">
-            <span style="font-size:10.5px;font-weight:500;min-width:78px;color:var(--tx2);">${d.lb}</span>
-            <div style="flex:1;background:var(--surf2);border-radius:3px;height:6px;overflow:hidden;">
-              <div style="width:${pct}%;height:100%;background:${d.met?"#166534":d.val>0?"#D97706":"#EAE7E0"};border-radius:3px;transition:width .4s;"></div>
-            </div>
-            <span style="font-size:11px;font-weight:600;min-width:36px;text-align:right;color:${d.met?"#166534":d.val>0?"#D97706":"#9CA3AF"};">${d.val}/${d.tgt}</span>
-            <span style="font-size:13px;">${d.met?"✅":"❌"}</span>
-          </div>`;
-        }).join("")}
-      </div>
-    </div>`;
-  }).join("")||`<div style="grid-column:1/-1;text-align:center;padding:32px;color:var(--tx3);">No data</div>`;
+      <span class="badge ${s.targetsMet===5?"b-gn":s.targetsMet>=3?"b-am":"b-rd"}" style="align-self:flex-start;">${s.targetsMet}/5</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      ${domains.map(d=>{
+        const pct=Math.min(100,Math.round((d.val/d.tgt)*100));
+        return`<div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:10.5px;font-weight:500;min-width:84px;color:var(--tx2);">${d.lb}</span>
+          <div style="flex:1;background:var(--surf2);border-radius:3px;height:6px;overflow:hidden;">
+            <div style="width:${pct}%;height:100%;background:${d.met?"#166534":d.val>0?"#D97706":"#EAE7E0"};border-radius:3px;transition:width .4s;"></div>
+          </div>
+          <span style="font-size:11px;font-weight:600;min-width:36px;text-align:right;color:${d.met?"#166534":d.val>0?"#D97706":"#9CA3AF"};">${d.val}/${d.tgt}</span>
+          <span style="font-size:13px;">${d.met?"✅":"❌"}</span>
+        </div>`;
+      }).join("")}
+    </div>
+    ${atBlock}
+  </div>`;
+  panel.style.display="block";
+  panel.scrollIntoView({behavior:"smooth",block:"nearest"});
 }
 
 function xStatsCSV(){
@@ -2199,7 +2277,8 @@ function renderAttendance(){
   const attend=getAttend();
   // ── filter ──
   let rows=[...attend];
-  if(type!=="all")rows=rows.filter(r=>r.kind===type);
+  if(type==="journal")rows=rows.filter(r=>r.kind==="journal"||r.kind==="case");
+  else if(type!=="all")rows=rows.filter(r=>r.kind===type);
   if(yr!=="all")rows=rows.filter(r=>(r.sessionDate||"").startsWith(yr));
   if(session!=="all")rows=rows.filter(r=>r.sessionId===session);
   if(desig!=="all")rows=rows.filter(r=>(r.desig||"R")===desig);
@@ -2246,11 +2325,12 @@ function renderAttendance(){
   if(!rows.length){
     th.innerHTML=""; tb.innerHTML=`<tr><td colspan="4" style="padding:32px;text-align:center;color:var(--tx3);">No attendance records yet — click <strong>+ Record Attendance</strong> to start</td></tr>`;
   } else {
-    const desigBgMap={SR:"#DBEAFE",R:"#EDE9FE",MO:"#CCFBF1"};
-    const desigFgMap={SR:"#1E3A8A",R:"#4C1D95",MO:"#134E4A"};
+    const desigBg={SR:"#DBEAFE",R:"#EDE9FE",MO:"#CCFBF1",PMO:"#FEF3C7"};
+    const desigFg={SR:"#1E3A8A",R:"#4C1D95",MO:"#134E4A",PMO:"#78350F"};
     // get designation for each doctor
     const desigMap={};for(const p of DB.posts)if(!desigMap[p.doctor])desigMap[p.doctor]=p.desig||"R";
 
+    const sessLabel=k=>k==="journal"||k==="case"?"Journal/Case":k==="seminar"?"Seminar":"Other";
     th.innerHTML=`<tr>
       <th>Doctor</th><th>Desig.</th>
       ${sessions.map(sid=>`<th style="font-size:10px;white-space:nowrap;max-width:90px;overflow:hidden;text-overflow:ellipsis;" title="${sessInfo[sid].title}">${sessInfo[sid].title.slice(0,18)}${sessInfo[sid].title.length>18?"…":""}<br><span style="font-weight:400;color:var(--tx3);">${sessInfo[sid].date?new Date(sessInfo[sid].date).toLocaleDateString("en-GB",{day:"2-digit",month:"short"}):""}</span></th>`).join("")}
@@ -2267,7 +2347,7 @@ function renderAttendance(){
       const bySession={};for(const r of docRows)bySession[r.sessionId]=r;
       return`<tr>
         <td style="font-weight:600;white-space:nowrap;">${doc}</td>
-        <td><span class="badge" style="background:${desigBgMap[dsg]||"#F3F4F6"};color:${desigFgMap[dsg]||"#6B7280"};">${dsg}</span></td>
+        <td><span class="badge" style="background:${desigBg[dsg]||"#F3F4F6"};color:${desigFg[dsg]||"#6B7280"};">${dsg}</span></td>
         ${sessions.map(sid=>{
           const r=bySession[sid];
           if(!r)return`<td style="color:var(--tx3);text-align:center;">—</td>`;
@@ -2288,13 +2368,16 @@ function renderAttendance(){
     return`<tr>
       <td style="color:var(--tx3);font-size:12px;">${i+1}</td>
       <td style="font-weight:600;">${r.doctor}</td>
-      <td><span class="badge ${({SR:"b-bl",R:"b-pu",MO:"b-tl"})[dsg]||"b-gy"}">${dsg}</span></td>
-      <td><span class="badge b-sl">${r.kind==="journal"?"Journal Club":"Seminar"}</span></td>
+      <td><span class="badge ${({SR:"b-bl",R:"b-pu",MO:"b-tl",PMO:"b-am"})[dsg]||"b-gy"}">${dsg}</span></td>
+      <td><span class="badge b-sl">${r.kind==="journal"?"Journal/Case":r.kind==="case"?"Journal/Case":"Seminar"}</span></td>
       <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.sessionTitle||""}">${r.sessionTitle||"—"}</td>
       <td style="font-family:'DM Mono';font-size:12px;white-space:nowrap;">${r.sessionDate?new Date(r.sessionDate).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}):""}</td>
       <td><span class="badge ${stBdg[r.status]||"b-gy"}">${r.status}</span></td>
       <td style="color:var(--tx3);font-size:12px;">${r.notes||"—"}</td>
-      <td><button class="btn btn-d btn-sm btn-ic" onclick="delAttend('${r.id}')">✕</button></td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-s btn-sm btn-ic" style="margin-right:4px;" onclick="editAttend('${r.id}')">✎</button>
+        <button class="btn btn-d btn-sm btn-ic" onclick="delAttend('${r.id}')">✕</button>
+      </td>
     </tr>`;
   }).join(""):`<tr><td colspan="9" style="padding:24px;text-align:center;color:var(--tx3);">No records</td></tr>`;
 }
@@ -2303,6 +2386,41 @@ function delAttend(id){
   if(!confirm("Remove this attendance record?"))return;
   const arr=getAttend().filter(r=>r.id!==id);
   saveAttend(arr);renderAttendance();toast("Removed","ok");
+}
+
+function editAttend(id){
+  const arr=getAttend();
+  const r=arr.find(x=>x.id===id);
+  if(!r)return;
+  document.getElementById("ae-id").value=r.id;
+  document.getElementById("ae-doc").value=r.doctor;
+  document.getElementById("ae-desig").value=r.desig||"R";
+  document.getElementById("ae-kind").value=r.kind||"journal";
+  document.getElementById("ae-date").value=r.sessionDate||"";
+  document.getElementById("ae-title").value=r.sessionTitle||"";
+  document.getElementById("ae-status").value=r.status||"present";
+  document.getElementById("ae-notes").value=r.notes||"";
+  openM("m-attend-edit");
+}
+
+function saveAttendEdit(){
+  const id=document.getElementById("ae-id").value;
+  const arr=getAttend();
+  const idx=arr.findIndex(r=>r.id===id);
+  if(idx<0){toast("Record not found","err");return;}
+  arr[idx]={
+    ...arr[idx],
+    desig:document.getElementById("ae-desig").value,
+    kind:document.getElementById("ae-kind").value,
+    sessionDate:document.getElementById("ae-date").value,
+    sessionTitle:document.getElementById("ae-title").value,
+    status:document.getElementById("ae-status").value,
+    notes:document.getElementById("ae-notes").value
+  };
+  saveAttend(arr);
+  closeM("m-attend-edit");
+  renderAttendance();
+  toast("Attendance record updated","ok");
 }
 
 // ── Populate sessions dropdown inside the modal ──
@@ -2322,8 +2440,8 @@ function loadSessionsForAttend(){
 function buildDoctorChecklist(){
   const allDocs=[...new Set(DB.posts.map(p=>p.doctor))].sort();
   const desigMap={};for(const p of DB.posts)if(!desigMap[p.doctor])desigMap[p.doctor]=p.desig||"R";
-  const desigBg={SR:"#DBEAFE",R:"#EDE9FE",MO:"#CCFBF1"};
-  const desigFg={SR:"#1E3A8A",R:"#4C1D95",MO:"#134E4A"};
+  const desigBg={SR:"#DBEAFE",R:"#EDE9FE",MO:"#CCFBF1",PMO:"#FEF3C7"};
+  const desigFg={SR:"#1E3A8A",R:"#4C1D95",MO:"#134E4A",PMO:"#78350F"};
   document.getElementById("at-roster-list").innerHTML=allDocs.map(doc=>{
     const dsg=desigMap[doc]||"R";
     return`<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg);border-radius:8px;">
