@@ -1016,6 +1016,7 @@ tbody tr:last-child td{border-bottom:none;}
     <div class="mft">
       <button class="btn btn-s" onclick="closeM('m-attend')">Cancel</button>
       <button class="btn btn-s btn-sm" onclick="markAll('present')">✓ All Present</button>
+      <button class="btn btn-s btn-sm" onclick="markAll('absent')">✗ All Absent</button>
       <button class="btn btn-p" onclick="saveAttendance()">Save attendance</button>
     </div>
   </div>
@@ -1239,7 +1240,7 @@ function buildSeedData(){
 const getYrs=()=>[...new Set([...DB.posts.map(p=>p.year),...DB.leave.map(l=>l.start.slice(0,4)),...DB.acts.map(a=>a.year||a.date?.slice(0,4)||"")])].filter(Boolean).sort().reverse();
 const getDocs=()=>[...new Set(DB.posts.map(p=>p.doctor))].sort();
 const getStns=()=>[...new Set(DB.posts.map(p=>p.station.split("/")[0].trim().toUpperCase()))].filter(Boolean).sort();
-const fmtD=d=>{if(!d)return"—";try{return new Date(d).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});}catch{return d;}};
+const fmtD=d=>{if(!d)return"—";try{const s=String(d);const nd=new Date(s.includes("T")?s:s+"T00:00:00");return isNaN(nd)?"—":nd.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});}catch{return"—";}};
 const GY=()=>document.getElementById("gYear").value;
 
 function leaveStatus(l){
@@ -1713,9 +1714,9 @@ const IMP_CFG={
         const kind=(c[iKind]||"journal").toLowerCase().trim();
         const sessionTitle=c[iTitle]||"";
         const sessionDate=c[iDate]||"";
-        // find matching session ID from DB.acts, or generate one from title+date
-        const matchedAct=DB.acts.find(a=>a.kind===kind&&a.title===sessionTitle);
-        const sessionId=iId>=0&&c[iId]?c[iId]:matchedAct?.id||(sessionTitle.slice(0,20).replace(/\s+/g,"-")+"-"+sessionDate);
+        // Generate a stable sessionId: prefer matched act, then title+date, then kind+date
+        const matchedAct=DB.acts.find(a=>a.kind===kind&&a.title===sessionTitle&&sessionTitle);
+        const sessionId=(iId>=0&&c[iId])?c[iId]:matchedAct?.id||((sessionTitle?sessionTitle.slice(0,20).replace(/\s+/g,"-")+"-":kind+"-")+sessionDate);
         const desig=iDsg>=0&&c[iDsg]?c[iDsg].toUpperCase():desigMap[doc]||"R";
         const status=(c[iS]||"present").toLowerCase().trim();
         return{id:uid(),kind,sessionId,sessionTitle,sessionDate,doctor:doc,desig,status,notes:c[iN]||""};
@@ -1723,9 +1724,25 @@ const IMP_CFG={
     },
     commit:(rows)=>{
       const existing=getAttend();
-      // upsert: remove existing for same doctor+session, then add new
+      // Upsert: remove existing for same doctor+session, then add new
       const filtered=existing.filter(e=>!rows.some(r=>r.doctor===e.doctor&&r.sessionId===e.sessionId));
-      saveAttend([...filtered,...rows]);
+      // Auto-absent: for each unique session in the import, add absent for any roster doctor not included
+      const desigMap={};for(const p of DB.posts)if(!desigMap[p.doctor])desigMap[p.doctor]=p.desig||"R";
+      const allRosterDocs=[...new Set(DB.posts.map(p=>p.doctor))];
+      const sessionGroups=new Map();
+      for(const r of rows){
+        if(!sessionGroups.has(r.sessionId))sessionGroups.set(r.sessionId,{rows:[],kind:r.kind,title:r.sessionTitle,date:r.sessionDate});
+        sessionGroups.get(r.sessionId).rows.push(r);
+      }
+      const autoAbsent=[];
+      for(const[sesId,sess] of sessionGroups){
+        const importedDocs=new Set(sess.rows.map(r=>r.doctor));
+        allRosterDocs.filter(doc=>!importedDocs.has(doc)).forEach(doc=>{
+          autoAbsent.push({id:uid(),kind:sess.kind,sessionId:sesId,sessionTitle:sess.title,
+            sessionDate:sess.date,doctor:doc,desig:desigMap[doc]||"R",status:"absent",notes:"Auto-marked"});
+        });
+      }
+      saveAttend([...filtered,...rows,...autoAbsent]);
     },
     getData:()=>getAttend().slice(-120).reverse()
   }
@@ -2205,7 +2222,7 @@ function renderStats(){
     const rankClass=i===0?"rank-1":i===1?"rank-2":i===2?"rank-3":"rank-n";
     const scoreColor=s.score>=80?"#166534":s.score>=50?"#D97706":"#DC2626";
     const atCell=s.atTotal>0
-      ?`<td style="text-align:center;"><span style="font-weight:600;color:${s.atRate>=80?"#166534":s.atRate>=50?"#D97706":"#DC2626"};">${s.atPresent}</span><span style="color:var(--tx3);font-size:11px;">/${s.atTotal}</span></td>`
+      ?`<td style="text-align:center;white-space:nowrap;"><span style="font-weight:600;color:${s.atRate>=80?"#166534":s.atRate>=50?"#D97706":"#DC2626"};">${s.atPresent}/${s.atTotal}</span> <span style="font-size:11px;color:var(--tx3);">${s.atRate}%</span></td>`
       :`<td style="text-align:center;color:var(--tx3);font-size:12px;">—</td>`;
     return`<tr>
       <td><span class="rank-badge ${rankClass}">${i+1}</span></td>
@@ -2253,8 +2270,8 @@ function showDocCard(docName){
         <div style="flex:1;background:var(--surf2);border-radius:3px;height:6px;overflow:hidden;">
           <div style="width:${s.atRate}%;height:100%;background:${s.atRate>=80?"#166534":s.atRate>=50?"#D97706":"#DC2626"};border-radius:3px;transition:width .4s;"></div>
         </div>
-        <span style="font-size:11px;font-weight:600;min-width:56px;text-align:right;color:${s.atRate>=80?"#166534":s.atRate>=50?"#D97706":"#9CA3AF"};">${s.atPresent}/${s.atTotal} sessions</span>
-        <span style="font-size:11px;color:var(--tx3);">(no score)</span>
+        <span style="font-size:12px;font-weight:700;min-width:44px;text-align:right;color:${s.atRate>=80?"#166534":s.atRate>=50?"#D97706":"#DC2626"};">${s.atRate}%</span>
+        <span style="font-size:11px;color:var(--tx3);">${s.atPresent}/${s.atTotal} sessions</span>
       </div>`
     :`<div style="margin-top:12px;padding:8px 12px;background:var(--bg);border-radius:8px;font-size:12px;color:var(--tx3);">No attendance records yet</div>`;
   panel.innerHTML=`<div class="doc-card" style="border:2px solid var(--gm);position:relative;">
@@ -2357,8 +2374,10 @@ function renderAttendance(){
   const sessions=[...new Set(rows.map(r=>r.sessionId))];
   // sort sessions by date
   const sessInfo={};
-  for(const r of rows)if(!sessInfo[r.sessionId])sessInfo[r.sessionId]={title:r.sessionTitle||r.sessionId,date:r.sessionDate||"",kind:r.kind};
+  for(const r of rows)if(!sessInfo[r.sessionId])sessInfo[r.sessionId]={title:r.sessionTitle||"",date:r.sessionDate||"",kind:r.kind};
   sessions.sort((a,b)=>(sessInfo[a].date||"").localeCompare(sessInfo[b].date||""));
+
+  const safeFmt=(d)=>{if(!d)return"";try{const s=String(d);const nd=new Date(s.includes("T")?s:s+"T00:00:00");return isNaN(nd)?"":nd.toLocaleDateString("en-GB",{day:"2-digit",month:"short"});}catch{return "";}};
 
   const th=document.getElementById("at-th"),tb=document.getElementById("at-tb");
   document.getElementById("at-ct").textContent=`${doctors.length} doctors · ${sessions.length} sessions`;
@@ -2368,13 +2387,18 @@ function renderAttendance(){
   } else {
     const desigBg={SR:"#DBEAFE",R:"#EDE9FE",MO:"#CCFBF1",PMO:"#FEF3C7"};
     const desigFg={SR:"#1E3A8A",R:"#4C1D95",MO:"#134E4A",PMO:"#78350F"};
-    // get designation for each doctor
     const desigMap={};for(const p of DB.posts)if(!desigMap[p.doctor])desigMap[p.doctor]=p.desig||"R";
+    const kindLabel={journal:"Journal",seminar:"Seminar",case:"Case"};
 
     const sessLabel=k=>k==="journal"||k==="case"?"Journal/Case":k==="seminar"?"Seminar":"Other";
     th.innerHTML=`<tr>
       <th>Doctor</th><th>Desig.</th>
-      ${sessions.map(sid=>`<th style="font-size:10px;white-space:nowrap;max-width:90px;overflow:hidden;text-overflow:ellipsis;" title="${sessInfo[sid].title}">${sessInfo[sid].title.slice(0,18)}${sessInfo[sid].title.length>18?"…":""}<br><span style="font-weight:400;color:var(--tx3);">${sessInfo[sid].date?new Date(sessInfo[sid].date).toLocaleDateString("en-GB",{day:"2-digit",month:"short"}):""}</span></th>`).join("")}
+      ${sessions.map(sid=>{
+        const si=sessInfo[sid];
+        const label=si.title||kindLabel[si.kind]||si.kind;
+        const dateStr=safeFmt(si.date);
+        return`<th style="font-size:10px;white-space:nowrap;max-width:90px;overflow:hidden;text-overflow:ellipsis;" title="${label} ${si.date}">${label.slice(0,14)}${label.length>14?"…":""}<br><span style="font-weight:400;color:var(--tx3);">${dateStr}</span></th>`;
+      }).join("")}
       <th>Attended</th><th>Rate</th>
     </tr>`;
 
@@ -2412,7 +2436,7 @@ function renderAttendance(){
       <td><span class="badge ${({SR:"b-bl",R:"b-pu",MO:"b-tl",PMO:"b-am"})[dsg]||"b-gy"}">${dsg}</span></td>
       <td><span class="badge b-sl">${r.kind==="journal"?"Journal/Case":r.kind==="case"?"Journal/Case":"Seminar"}</span></td>
       <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.sessionTitle||""}">${r.sessionTitle||"—"}</td>
-      <td style="font-family:'DM Mono';font-size:12px;white-space:nowrap;">${r.sessionDate?new Date(r.sessionDate).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}):""}</td>
+      <td style="font-family:'DM Mono';font-size:12px;white-space:nowrap;">${fmtD(r.sessionDate)}</td>
       <td><span class="badge ${stBdg[r.status]||"b-gy"}">${r.status}</span></td>
       <td style="color:var(--tx3);font-size:12px;">${r.notes||"—"}</td>
       <td style="white-space:nowrap;">
@@ -2489,8 +2513,8 @@ function buildDoctorChecklist(){
       <span style="font-weight:600;flex:1;font-size:13px;">${doc}</span>
       <span class="badge" style="background:${desigBg[dsg]};color:${desigFg[dsg]};font-size:10px;">${dsg}</span>
       <select class="att-status" data-doc="${doc}" data-desig="${dsg}" style="font-size:12px;padding:4px 8px;border-radius:6px;">
-        <option value="present">✓ Present</option>
         <option value="absent">✗ Absent</option>
+        <option value="present">✓ Present</option>
         <option value="excused">E Excused</option>
       </select>
     </div>`;
@@ -2500,7 +2524,6 @@ function buildDoctorChecklist(){
 function markAll(status){
   document.querySelectorAll(".att-status").forEach(sel=>sel.value=status);
 }
-
 function saveAttendance(){
   const kind=document.getElementById("at-kind").value;
   const sesId=document.getElementById("at-ses-sel").value;
@@ -2510,57 +2533,38 @@ function saveAttendance(){
   const selects=document.querySelectorAll(".att-status");
   if(!selects.length){toast("No doctors found in roster","err");return;}
 
-  // Doctors on leave on the session date
-  const sessionDate=date?new Date(date):null;
-  const onLeave=new Set(
-    sessionDate?DB.leave.filter(l=>{
-      const s=new Date(l.start),e=new Date(l.end);
-      return sessionDate>=s&&sessionDate<=e;
-    }).map(l=>l.name.toUpperCase().replace(/^DR\.?\s*/,"").split(" ")[0]):[]
-  );
-
-  // Build desig map
-  const desigMap={};for(const p of DB.posts)if(!desigMap[p.doctor])desigMap[p.doctor]=p.desig||"R";
-
-  // All roster doctors for auto-absent
-  const allRosterDocs=[...new Set(DB.posts.map(p=>p.doctor))];
-
-  // Records from the checklist (doctors actually shown in modal)
-  const markedDocs=new Set();
-  const markedRecords=[...selects].map(sel=>{
-    markedDocs.add(sel.dataset.doc);
-    return{
-      id:uid(),kind,sessionId:sesId,
-      sessionTitle:sesTitle.split(" (")[0],
-      sessionDate:date,doctor:sel.dataset.doc,
-      desig:sel.dataset.desig||"R",
-      status:sel.value,notes:""
-    };
-  });
-
-  // Auto-absent: roster doctors not in checklist and not on leave
-  const autoAbsent=allRosterDocs
-    .filter(doc=>!markedDocs.has(doc))
-    .filter(doc=>{
-      // Check if any leave record matches this doctor
-      const docKey=doc.split(" ")[0];
-      return![...onLeave].some(lk=>lk===docKey||docKey.includes(lk)||lk.includes(docKey));
-    })
-    .map(doc=>({
-      id:uid(),kind,sessionId:sesId,
-      sessionTitle:sesTitle.split(" (")[0],
-      sessionDate:date,doctor:doc,
-      desig:desigMap[doc]||"R",
-      status:"absent",notes:"Auto-marked"
-    }));
+  // Doctors on leave on the session date → auto-set to excused
+  const sessionDate=date?new Date(date+"T00:00:00"):null;
+  const onLeave=new Set();
+  if(sessionDate){
+    DB.leave.forEach(l=>{
+      const s=new Date(l.start+"T00:00:00"),e=new Date(l.end+"T00:00:00");
+      if(sessionDate>=s&&sessionDate<=e){
+        // match by first word of doctor name (leave uses full name like "Dr. Adebanjo R. A.")
+        const key=l.name.toUpperCase().replace(/^DR\.?\s*/,"").split(/[\s,]/)[0];
+        if(key)onLeave.add(key);
+      }
+    });
+  }
 
   const arr=getAttend();
   const cleaned=arr.filter(r=>!(r.sessionId===sesId&&r.kind===kind));
-  const allNew=[...markedRecords,...autoAbsent];
-  saveAttend([...cleaned,...allNew]);
+  let presentCount=0,absentCount=0,excusedCount=0;
+  const newRecords=[...selects].map(sel=>{
+    const doc=sel.dataset.doc;
+    let status=sel.value;
+    // Auto-excused if on leave (only override absent, not explicit present/excused)
+    if(status==="absent"&&onLeave.has(doc.split(" ")[0])){status="excused";}
+    if(status==="present")presentCount++;
+    else if(status==="absent")absentCount++;
+    else excusedCount++;
+    return{id:uid(),kind,sessionId:sesId,sessionTitle:sesTitle.split(" (")[0],
+      sessionDate:date,doctor:doc,desig:sel.dataset.desig||"R",status,notes:status==="excused"&&onLeave.has(doc.split(" ")[0])?"On leave":""};
+  });
+
+  saveAttend([...cleaned,...newRecords]);
   closeM("m-attend");
-  const absentCount=autoAbsent.length;
-  toast(`Attendance saved — ${markedRecords.length} marked · ${absentCount} auto-absent`,"ok");
+  toast(`Saved — ${presentCount} present · ${absentCount} absent · ${excusedCount} excused`,"ok");
   renderAttendance();
 }
 
