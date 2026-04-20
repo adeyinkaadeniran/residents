@@ -1240,7 +1240,7 @@ function buildSeedData(){
 const getYrs=()=>[...new Set([...DB.posts.map(p=>p.year),...DB.leave.map(l=>l.start.slice(0,4)),...DB.acts.map(a=>a.year||a.date?.slice(0,4)||"")])].filter(Boolean).sort().reverse();
 const getDocs=()=>[...new Set(DB.posts.map(p=>p.doctor))].sort();
 const getStns=()=>[...new Set(DB.posts.map(p=>p.station.split("/")[0].trim().toUpperCase()))].filter(Boolean).sort();
-const fmtD=d=>{if(!d)return"—";try{const s=String(d);const nd=new Date(s.includes("T")?s:s+"T00:00:00");return isNaN(nd)?"—":nd.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});}catch{return"—";}};
+const fmtD=d=>{if(!d)return"—";try{const s=String(d);const nd=new Date(s.includes("T")?s:s+"T00:00:00");if(isNaN(nd))return"—";const dd=String(nd.getDate()).padStart(2,"0"),mm=String(nd.getMonth()+1).padStart(2,"0"),yyyy=nd.getFullYear();return`${dd}/${mm}/${yyyy}`;}catch{return"—";}};
 const GY=()=>document.getElementById("gYear").value;
 
 function leaveStatus(l){
@@ -1680,11 +1680,11 @@ const IMP_CFG={
       ["NOTES","","Optional"]
     ],
     tplRows:[
-      "DOCTOR,DESIGNATION,SESSION_TYPE,SESSION_TITLE,DATE,STATUS,NOTES",
-      "ADEBANJO,SR,journal,Randomized Controlled Trials,2026-03-04,present,",
-      "BASHIR,SR,journal,Randomized Controlled Trials,2026-03-04,absent,On call",
-      "SONOIKI,SR,seminar,Community Diagnosis Principles,2026-01-22,present,",
-      "OGUNYEMI,SR,seminar,Community Diagnosis Principles,2026-01-22,excused,Leave"
+      "DOCTOR,DESIGNATION,SESSION_TYPE,SESSION_TITLE/TOPIC,DATE,STATUS,NOTES",
+      "ADEBANJO,SR,journal,Randomized Controlled Trials,04/03/2026,present,",
+      "BASHIR,SR,journal,Randomized Controlled Trials,04/03/2026,absent,On call",
+      "SONOIKI,SR,seminar,Community Diagnosis Principles,22/01/2026,present,",
+      "OGUNYEMI,SR,seminar,Community Diagnosis Principles,22/01/2026,excused,Leave"
     ],
     tplName:"attendance_template.csv",
     recTitle:"Attendance records",
@@ -1703,18 +1703,33 @@ const IMP_CFG={
       </tr>`;
     },
     parse:(lines,hdrs)=>{
-      const iD=fi(hdrs,"DOCTOR"),iDsg=fi(hdrs,"DESIG"),iKind=fi(hdrs,"TYPE"),iTitle=fi(hdrs,"TITLE"),iId=fi(hdrs,"ID"),iDate=fi(hdrs,"DATE"),iS=fi(hdrs,"STATUS"),iN=fi(hdrs,"NOTE");
-      if([iD,iKind,iTitle,iDate,iS].some(i=>i<0))return null;
-      // build desig lookup from DB.posts
+      const iD=fi(hdrs,"DOCTOR"),iDsg=fi(hdrs,"DESIG"),iKind=fi(hdrs,"TYPE"),
+            iTitle=fi(hdrs,"TITLE"),iId=fi(hdrs,"ID"),iDate=fi(hdrs,"DATE"),
+            iS=fi(hdrs,"STATUS"),iN=fi(hdrs,"NOTE");
+      // Only doctor, type, date and status are truly required
+      if([iD,iKind,iDate,iS].some(i=>i<0))return null;
+      // Normalise any date string to yyyy-mm-dd regardless of input format
+      const normDate=(raw)=>{
+        if(!raw)return"";
+        const s=raw.trim();
+        // already yyyy-mm-dd
+        if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;
+        // dd/mm/yyyy or dd-mm-yyyy
+        const m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+        if(m)return`${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;
+        // mm/dd/yyyy fallback
+        const m2=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2})$/);
+        if(m2)return`20${m2[3]}-${m2[1].padStart(2,"0")}-${m2[2].padStart(2,"0")}`;
+        return s;
+      };
       const desigMap={};for(const p of DB.posts)if(!desigMap[p.doctor])desigMap[p.doctor]=p.desig||"R";
       return lines.slice(1).map(l=>{
         const c=splitCSV(l);
         const doc=(c[iD]||"").toUpperCase().trim();
         if(!doc)return null;
         const kind=(c[iKind]||"journal").toLowerCase().trim();
-        const sessionTitle=c[iTitle]||"";
-        const sessionDate=c[iDate]||"";
-        // Generate a stable sessionId: prefer matched act, then title+date, then kind+date
+        const sessionTitle=iTitle>=0?c[iTitle]||"":"";
+        const sessionDate=normDate(c[iDate]||"");
         const matchedAct=DB.acts.find(a=>a.kind===kind&&a.title===sessionTitle&&sessionTitle);
         const sessionId=(iId>=0&&c[iId])?c[iId]:matchedAct?.id||((sessionTitle?sessionTitle.slice(0,20).replace(/\s+/g,"-")+"-":kind+"-")+sessionDate);
         const desig=iDsg>=0&&c[iDsg]?c[iDsg].toUpperCase():desigMap[doc]||"R";
@@ -1875,8 +1890,8 @@ function clearAll(){clearActive();}
 function xCSV(type){
   let rows=[],header="";
   if(type==="attendance"){
-    header="DOCTOR,DESIGNATION,SESSION_TYPE,SESSION_TITLE,DATE,STATUS,NOTES";
-    rows=getAttend().map(a=>`${a.doctor},${a.desig||"R"},${a.kind},"${a.sessionTitle||""}",${a.sessionDate||""},${a.status},"${a.notes||""}"`);
+    header="DOCTOR,DESIGNATION,SESSION_TYPE,SESSION_TITLE/TOPIC,DATE,STATUS,NOTES";
+    rows=getAttend().map(a=>`${a.doctor},${a.desig||"R"},${a.kind},"${a.sessionTitle||""}",${fmtD(a.sessionDate)},${a.status},"${a.notes||""}"`);
   } else if(type==="postings"){
     header="DOCTOR,DESIGNATION,MONTH,YEAR,STATION,REPORT_STATUS,CONSULTANT,NOTES";
     rows=DB.posts.map(p=>`${p.doctor},${p.desig||"R"},${p.month},${p.year},"${p.station}",${p.rs||"pending"},"${p.con||""}","${p.notes||""}"`);}
@@ -2377,7 +2392,7 @@ function renderAttendance(){
   for(const r of rows)if(!sessInfo[r.sessionId])sessInfo[r.sessionId]={title:r.sessionTitle||"",date:r.sessionDate||"",kind:r.kind};
   sessions.sort((a,b)=>(sessInfo[a].date||"").localeCompare(sessInfo[b].date||""));
 
-  const safeFmt=(d)=>{if(!d)return"";try{const s=String(d);const nd=new Date(s.includes("T")?s:s+"T00:00:00");return isNaN(nd)?"":nd.toLocaleDateString("en-GB",{day:"2-digit",month:"short"});}catch{return "";}};
+  const safeFmt=(d)=>{if(!d)return"";try{const s=String(d);const nd=new Date(s.includes("T")?s:s+"T00:00:00");if(isNaN(nd))return"";const dd=String(nd.getDate()).padStart(2,"0"),mm=String(nd.getMonth()+1).padStart(2,"0");return`${dd}/${mm}`;}catch{return"";}};
 
   const th=document.getElementById("at-th"),tb=document.getElementById("at-tb");
   document.getElementById("at-ct").textContent=`${doctors.length} doctors · ${sessions.length} sessions`;
@@ -2494,7 +2509,7 @@ function loadSessionsForAttend(){
   const sessions=DB.acts.filter(a=>a.kind===kind&&a.title);
   const sel=document.getElementById("at-ses-sel");
   sel.innerHTML='<option value="">— select session —</option>'+
-    sessions.map(s=>`<option value="${s.id}">${s.title}${s.date?" ("+new Date(s.date).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"})+")":""}</option>`).join("");
+    sessions.map(s=>`<option value="${s.id}">${s.title}${s.date?" ("+fmtD(s.date)+")":""}</option>`).join("");
   sel.onchange=function(){
     const act=sessions.find(s=>s.id===this.value);
     if(act&&act.date)document.getElementById("at-date").value=act.date;
