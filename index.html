@@ -69,7 +69,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);min-h
 .pg{display:none;}.pg.on{display:block;}
 /* METRICS */
 .mrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:22px;}
-.mc{background:var(--surf);border:1px solid var(--blt);border-radius:var(--rl);padding:15px 17px;}
+.mc{background:var(--surf);border:1px solid var(--blt);border-radius:var(--rl);padding:15px 17px;cursor:pointer;transition:box-shadow .15s,transform .12s;}
+.mc:hover{box-shadow:var(--shm);transform:translateY(-1px);}
+.mc.dk:hover{box-shadow:0 4px 16px rgba(0,0,0,.25);}
 .mc-lb{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);margin-bottom:7px;}
 .mc-v{font-size:25px;font-weight:600;color:var(--tx);line-height:1;}
 .mc-s{font-size:11px;color:var(--tx3);margin-top:4px;}
@@ -1115,13 +1117,20 @@ async function loadAll(){
     const {data:acts,error:ae}=await SB.from("activities").select("*").order("date",{nullsFirst:false});
     if(ae)throw ae;
 
+    lm.textContent="Loading attendance…";
+    const {data:attend,error:ate}=await SB.from("attendance").select("*").order("session_date",{nullsFirst:false});
+    if(ate)throw ate;
+
     DB.posts = posts.map(r=>({id:r.id,doctor:r.doctor,desig:r.desig||"R",month:r.month,year:r.year,station:r.station,rs:r.rs,con:r.con||"",notes:r.notes||""}));
     DB.leave = leave.map(r=>({id:r.id,name:r.name,type:r.type,start:r.start_date,end:r.end_date,dur:r.dur||"",rel:r.rel||"",notes:r.notes||""}));
     DB.acts  = acts.map(r=>({id:r.id,kind:r.kind,doctor:r.doctor,title:r.title,date:r.date||"",year:r.year||"",venue:r.venue||"",extra:r.extra||"",pubtype:r.pubtype||"",jn:r.jn||"",category:r.category||"",status:r.status,notes:r.notes||""}));
+    DB.attend= (attend||[]).map(r=>({id:r.id,kind:r.kind,sessionId:r.session_id,sessionTitle:r.session_title||"",sessionDate:r.session_date||"",doctor:r.doctor,desig:r.desig||"R",status:r.status,notes:r.notes||""}));
+    // Also persist to localStorage as cache
+    localStorage.setItem('rmd2_att',JSON.stringify(DB.attend));
 
     ls.classList.add("hidden");
     document.getElementById("sync-bar").style.display="flex";
-    setSyncStatus("ok",`Synced · ${DB.posts.length} postings, ${DB.leave.length} leave, ${DB.acts.length} activities`);
+    setSyncStatus("ok",`Synced · ${DB.posts.length} postings, ${DB.leave.length} leave, ${DB.acts.length} activities, ${DB.attend.length} attendance`);
     bootApp();
   }catch(e){
     ls.classList.add("hidden");
@@ -1132,6 +1141,7 @@ async function loadAll(){
     DB.posts=lsGet('rmd2_p',seed.posts);
     DB.leave=lsGet('rmd2_l',seed.leave);
     DB.acts=lsGet('rmd2_a',seed.acts);
+    DB.attend=lsGet('rmd2_att',[]);
     bootApp();
   }
 }
@@ -1346,6 +1356,32 @@ function initSel(){
   const ic=document.getElementById("imp-ct");if(ic)ic.textContent=`(${DB.posts.length} records)`;
 }
 
+// Navigate to a page and pre-set filter values
+function navTo(pg, filters={}){
+  // Find and click the sidebar nav item
+  const el=document.querySelector(`.ni[data-pg="${pg}"]`);
+  if(el)nav(el);
+  // Apply filters after a short tick to let the page render
+  requestAnimationFrame(()=>{
+    Object.entries(filters).forEach(([id,val])=>{
+      const el=document.getElementById(id);
+      if(!el)return;
+      el.value=val;
+    });
+    // Trigger the page's render with the new filter values
+    ({
+      roster:renderRoster,
+      leave:renderLeave,
+      journal:()=>rAct("journal"),
+      seminar:()=>rAct("seminar"),
+      research:()=>rAct("research"),
+      other:()=>rAct("other"),
+      attendance:renderAttendance,
+      stats:renderStats
+    })[pg]?.();
+  });
+}
+
 // ══════════════════════════════════════════
 // DASHBOARD
 // ══════════════════════════════════════════
@@ -1357,13 +1393,26 @@ function renderDB(){
   const docs=new Set(posts.map(p=>p.doctor)).size;
   const signed=posts.filter(p=>p.rs==="completed").length;
   const onLv=DB.leave.filter(l=>leaveStatus(l)==="active").length;
-  document.getElementById("db-mc").innerHTML=`
-    <div class="mc dk"><div class="mc-lb">Resident Doctors</div><div class="mc-v">${docs}</div><div class="mc-s">In roster</div></div>
-    <div class="mc"><div class="mc-lb">Postings</div><div class="mc-v">${posts.length}</div><div class="mc-s">${gy==="all"?"All years":gy}</div></div>
-    <div class="mc"><div class="mc-lb">Reports Signed</div><div class="mc-v">${signed}</div><div class="mc-s">${posts.length?Math.round(signed/posts.length*100):0}% of postings</div></div>
-    <div class="mc"><div class="mc-lb">Currently on Leave</div><div class="mc-v">${onLv}</div><div class="mc-s">of ${DB.leave.length} scheduled</div></div>
-    <div class="mc"><div class="mc-lb">Activities Logged</div><div class="mc-v">${acts.length}</div><div class="mc-s">All modules</div></div>
-  `;
+
+  const mc=(label,value,sub,action,dark=false)=>`
+    <div class="mc${dark?" dk":""}" onclick="${action}" title="Click to view details" style="cursor:pointer;">
+      <div class="mc-lb">${label}</div>
+      <div class="mc-v">${value}</div>
+      <div class="mc-s">${sub}</div>
+    </div>`;
+
+  document.getElementById("db-mc").innerHTML=
+    mc("Resident Doctors", docs, "In roster",
+      `navTo('roster',{ry:'${gy}',rrs:'all',rdesig:'all'})`, true) +
+    mc("Postings", posts.length, gy==="all"?"All years":gy,
+      `navTo('roster',{ry:'${gy}',rrs:'all',rdesig:'all'})`) +
+    mc("Reports Signed", signed, `${posts.length?Math.round(signed/posts.length*100):0}% of postings`,
+      `navTo('roster',{ry:'${gy}',rrs:'completed',rdesig:'all'})`) +
+    mc("Currently on Leave", onLv, `of ${DB.leave.length} scheduled`,
+      `navTo('leave',{ls:'active'})`) +
+    mc("Activities Logged", acts.length, "All modules",
+      `navTo('journal',{jy:'${gy}',js:'all'})`);
+
   const stMap={};
   for(const p of posts){const k=p.station.split("/")[0].trim().toUpperCase()||"OTHER";stMap[k]=(stMap[k]||0)+1;}
   const stL=Object.keys(stMap).sort((a,b)=>stMap[b]-stMap[a]).slice(0,10);
@@ -1374,20 +1423,33 @@ function renderDB(){
     data:{labels:stL,datasets:[{data:stL.map(l=>stMap[l]),backgroundColor:pal,borderWidth:0}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"right",labels:{font:{size:11},boxWidth:10}}}}
   });
-  const cats=[{k:"journal",lb:"Journal presentations"},{k:"seminar",lb:"Seminars"},{k:"research",lb:"Research/Pubs"},{k:"other",lb:"Other activities"}];
+  const cats=[
+    {k:"journal",  lb:"Journal presentations", yrSel:"jy"},
+    {k:"seminar",  lb:"Seminars",              yrSel:"sy"},
+    {k:"research", lb:"Research/Pubs",         yrSel:"rey"},
+    {k:"other",    lb:"Other activities",      yrSel:"oy"}
+  ];
   document.getElementById("db-comp").innerHTML=cats.map(c=>{
     const all=acts.filter(a=>a.kind===c.k);
     const done=all.filter(a=>["Completed","Published"].includes(a.status)).length;
     const pct=all.length?Math.round(done/all.length*100):0;
-    return`<div style="margin-bottom:13px;"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px;"><span style="font-weight:500;">${c.lb}</span><span style="color:var(--tx3);">${done}/${all.length} · ${pct}%</span></div><div class="pbw"><div class="pb" style="width:${pct}%;"></div></div></div>`;
+    return`<div style="margin-bottom:13px;cursor:pointer;" onclick="navTo('${c.k}',{'${c.yrSel}':'${gy}'})" title="Click to view ${c.lb}">
+      <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px;">
+        <span style="font-weight:500;">${c.lb}</span>
+        <span style="color:var(--tx3);">${done}/${all.length} · ${pct}%</span>
+      </div>
+      <div class="pbw"><div class="pb" style="width:${pct}%;"></div></div>
+    </div>`;
   }).join("");
   const rec=[...acts].sort((a,b)=>(b.date||"").localeCompare(a.date||"")).slice(0,8);
   document.getElementById("db-rec").innerHTML=rec.length?rec.map(a=>`
-    <tr><td style="font-weight:600;">${a.doctor}</td>
-    <td><span class="badge b-sl">${{journal:"Journal",seminar:"Seminar",research:"Research",other:"Other"}[a.kind]||a.kind}</span></td>
-    <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${a.title}">${a.title}</td>
-    <td style="font-family:'DM Mono';font-size:12px;white-space:nowrap;">${fmtD(a.date)}</td>
-    <td><span class="badge ${actBadge(a.status)}">${a.status}</span></td></tr>`).join(""):`<tr><td colspan="5" class="empty" style="text-align:center;">No activities yet</td></tr>`;
+    <tr style="cursor:pointer;" onclick="navTo('${a.kind}',{})" title="View all ${a.kind} activities">
+      <td style="font-weight:600;">${a.doctor}</td>
+      <td><span class="badge b-sl">${{journal:"Journal",seminar:"Seminar",research:"Research",other:"Other"}[a.kind]||a.kind}</span></td>
+      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${a.title}">${a.title}</td>
+      <td style="font-family:'DM Mono';font-size:12px;white-space:nowrap;">${fmtD(a.date)}</td>
+      <td><span class="badge ${actBadge(a.status)}">${a.status}</span></td>
+    </tr>`).join(""):`<tr><td colspan="5" class="empty" style="text-align:center;">No activities yet</td></tr>`;
 }
 
 // ══════════════════════════════════════════
@@ -1463,6 +1525,11 @@ async function removeDoctor(doc){
   DB.posts=DB.posts.filter(p=>p.doctor!==doc);
   DB.acts=DB.acts.filter(a=>a.doctor!==doc);
   saveAttend(getAttend().filter(r=>r.doctor!==doc));
+  // Delete from Supabase
+  if(!OFFLINE&&SB){
+    try{ await SB.from("attendance").delete().eq("doctor",doc); }catch(e){console.error(e);}
+  }
+  localStorage.setItem('rmd2_att',JSON.stringify(DB.attend));
   // Sync to Supabase
   if(!OFFLINE&&SB){
     setSyncStatus("syncing","Removing doctor…");
@@ -1737,10 +1804,16 @@ const IMP_CFG={
         return{id:uid(),kind,sessionId,sessionTitle,sessionDate,doctor:doc,desig,status,notes:c[iN]||""};
       }).filter(Boolean);
     },
-    commit:(rows)=>{
-      const existing=getAttend();
-      // Upsert: remove existing for same doctor+session, then add new
-      const filtered=existing.filter(e=>!rows.some(r=>r.doctor===e.doctor&&r.sessionId===e.sessionId));
+    commit:async(rows)=>{
+      // Remove old records for these sessions from Supabase
+      const sesIds=[...new Set(rows.map(r=>r.sessionId))];
+      if(!OFFLINE&&SB){
+        for(const sid of sesIds){
+          try{ await SB.from("attendance").delete().eq("session_id",sid); }catch(e){console.error(e);}
+        }
+      }
+      // Also remove from in-memory
+      DB.attend=DB.attend.filter(e=>!sesIds.includes(e.sessionId));
       // Auto-absent: for each unique session in the import, add absent for any roster doctor not included
       const desigMap={};for(const p of DB.posts)if(!desigMap[p.doctor])desigMap[p.doctor]=p.desig||"R";
       const allRosterDocs=[...new Set(DB.posts.map(p=>p.doctor))];
@@ -1757,7 +1830,9 @@ const IMP_CFG={
             sessionDate:sess.date,doctor:doc,desig:desigMap[doc]||"R",status:"absent",notes:"Auto-marked"});
         });
       }
-      saveAttend([...filtered,...rows,...autoAbsent]);
+      // Upsert new rows and auto-absent via Supabase
+      const allNew=[...rows,...autoAbsent];
+      await bulkSaveAttend(allNew);
     },
     getData:()=>getAttend().slice(-120).reverse()
   }
@@ -1819,7 +1894,7 @@ function parseCSV(txt){
 
 async function doImport(){
   if(!pending.length)return;
-  IMP_CFG[impType].commit(pending);
+  await IMP_CFG[impType].commit(pending);
   // Attendance is localStorage-only — skip Supabase upload
   if(impType!=="attendance"){
     const tableMap={roster:"postings",leave:"leave_records",journal:"activities",seminar:"activities",research:"activities",other:"activities"};
@@ -1843,8 +1918,7 @@ async function doImport(){
 
 function delAttendById(id){
   if(!confirm("Remove this record?"))return;
-  saveAttend(getAttend().filter(r=>r.id!==id));
-  renderImpRecords();toast("Removed","ok");
+  delOneAttend(id);renderImpRecords();toast("Removed","ok");
 }
 
 function cancelImp(){
@@ -1868,7 +1942,14 @@ function delPost(id){
 async function clearActive(){
   const labels={roster:"all posting",leave:"all leave",journal:"all journal",seminar:"all seminar",research:"all research",other:"all other activity",attendance:"all attendance"};
   if(!confirm(`Delete ${labels[impType]} records?`))return;
-  if(impType==="attendance"){saveAttend([]);renderImpRecords();toast("Cleared","ok");return;}
+  if(impType==="attendance"){
+    if(!OFFLINE&&SB){
+      try{ await SB.from("attendance").delete().neq("id","__none__"); }catch(e){console.error(e);}
+    }
+    DB.attend=[];
+    localStorage.setItem('rmd2_att',JSON.stringify([]));
+    renderImpRecords();toast("Cleared","ok");return;
+  }
   const tableMap={roster:"postings",leave:"leave_records",journal:"activities",seminar:"activities",research:"activities",other:"activities"};
   if(!OFFLINE&&SB){
     setSyncStatus("syncing","Deleting…");
@@ -2336,10 +2417,66 @@ function xStatsCSV(){
 // ATTENDANCE REGISTER
 // ══════════════════════════════════════════
 // DB.attend entries: {id, kind('journal'|'seminar'), sessionId, sessionTitle, sessionDate, doctor, desig, status('present'|'absent'|'excused'), notes}
-// Stored in localStorage key 'rmd2_att' (Supabase support can be added later)
+// ── Attendance helpers — Supabase-backed, localStorage as offline cache ──
+function getAttend(){ return DB.attend; }
 
-function getAttend(){return lsGet('rmd2_att',[]);}
-function saveAttend(arr){localStorage.setItem('rmd2_att',JSON.stringify(arr));}
+function attendToRow(a){
+  return{id:a.id,kind:a.kind,session_id:a.sessionId,session_title:a.sessionTitle||"",
+    session_date:a.sessionDate||null,doctor:a.doctor,desig:a.desig||"R",
+    status:a.status,notes:a.notes||""};
+}
+
+async function saveAttend(arr){
+  DB.attend=arr;
+  localStorage.setItem('rmd2_att',JSON.stringify(arr)); // offline cache
+  if(!OFFLINE&&SB){
+    // Full replace: delete all then bulk insert — simplest for batch ops
+    // For single-record ops use saveOneAttend / delOneAttend instead
+  }
+}
+
+async function saveOneAttend(record){
+  DB.attend=[...DB.attend.filter(r=>r.id!==record.id),record];
+  localStorage.setItem('rmd2_att',JSON.stringify(DB.attend));
+  if(!OFFLINE&&SB){
+    setSyncStatus("syncing","Saving…");
+    try{
+      const{error}=await SB.from("attendance").upsert(attendToRow(record),{onConflict:"id"});
+      if(error)throw error;
+      setSyncStatus("ok","Saved · "+new Date().toLocaleTimeString());
+    }catch(e){setSyncStatus("err","Save failed");toast("Sync error: "+e.message,"err");}
+  }
+}
+
+async function delOneAttend(id){
+  DB.attend=DB.attend.filter(r=>r.id!==id);
+  localStorage.setItem('rmd2_att',JSON.stringify(DB.attend));
+  if(!OFFLINE&&SB){
+    setSyncStatus("syncing","Deleting…");
+    try{
+      const{error}=await SB.from("attendance").delete().eq("id",id);
+      if(error)throw error;
+      setSyncStatus("ok","Deleted · "+new Date().toLocaleTimeString());
+    }catch(e){setSyncStatus("err","Delete failed");toast("Sync error: "+e.message,"err");}
+  }
+}
+
+async function bulkSaveAttend(arr){
+  // Upsert all rows in chunks
+  DB.attend=[...DB.attend.filter(e=>!arr.some(r=>r.id===e.id)),...arr];
+  localStorage.setItem('rmd2_att',JSON.stringify(DB.attend));
+  if(!OFFLINE&&SB){
+    setSyncStatus("syncing",`Uploading ${arr.length} attendance records…`);
+    try{
+      const rows=arr.map(attendToRow);
+      for(let i=0;i<rows.length;i+=500){
+        const{error}=await SB.from("attendance").upsert(rows.slice(i,i+500),{onConflict:"id"});
+        if(error)throw error;
+      }
+      setSyncStatus("ok",`Uploaded ${arr.length} attendance records`);
+    }catch(e){setSyncStatus("err","Upload failed");toast("Attendance sync error: "+e.message,"err");}
+  }
+}
 
 function renderAttendance(){
   const type=document.getElementById("at-type")?.value||"all";
@@ -2464,8 +2601,7 @@ function renderAttendance(){
 
 function delAttend(id){
   if(!confirm("Remove this attendance record?"))return;
-  const arr=getAttend().filter(r=>r.id!==id);
-  saveAttend(arr);renderAttendance();toast("Removed","ok");
+  delOneAttend(id);renderAttendance();toast("Removed","ok");
 }
 
 function editAttend(id){
@@ -2483,12 +2619,12 @@ function editAttend(id){
   openM("m-attend-edit");
 }
 
-function saveAttendEdit(){
+async function saveAttendEdit(){
   const id=document.getElementById("ae-id").value;
   const arr=getAttend();
   const idx=arr.findIndex(r=>r.id===id);
   if(idx<0){toast("Record not found","err");return;}
-  arr[idx]={
+  const updated={
     ...arr[idx],
     desig:document.getElementById("ae-desig").value,
     kind:document.getElementById("ae-kind").value,
@@ -2497,7 +2633,7 @@ function saveAttendEdit(){
     status:document.getElementById("ae-status").value,
     notes:document.getElementById("ae-notes").value
   };
-  saveAttend(arr);
+  await saveOneAttend(updated);
   closeM("m-attend-edit");
   renderAttendance();
   toast("Attendance record updated","ok");
@@ -2539,7 +2675,7 @@ function buildDoctorChecklist(){
 function markAll(status){
   document.querySelectorAll(".att-status").forEach(sel=>sel.value=status);
 }
-function saveAttendance(){
+async function saveAttendance(){
   const kind=document.getElementById("at-kind").value;
   const sesId=document.getElementById("at-ses-sel").value;
   const date=document.getElementById("at-date").value;
@@ -2563,12 +2699,10 @@ function saveAttendance(){
   }
 
   const arr=getAttend();
-  const cleaned=arr.filter(r=>!(r.sessionId===sesId&&r.kind===kind));
   let presentCount=0,absentCount=0,excusedCount=0;
   const newRecords=[...selects].map(sel=>{
     const doc=sel.dataset.doc;
     let status=sel.value;
-    // Auto-excused if on leave (only override absent, not explicit present/excused)
     if(status==="absent"&&onLeave.has(doc.split(" ")[0])){status="excused";}
     if(status==="present")presentCount++;
     else if(status==="absent")absentCount++;
@@ -2577,7 +2711,12 @@ function saveAttendance(){
       sessionDate:date,doctor:doc,desig:sel.dataset.desig||"R",status,notes:status==="excused"&&onLeave.has(doc.split(" ")[0])?"On leave":""};
   });
 
-  saveAttend([...cleaned,...newRecords]);
+  // Remove old records for this session, then bulk-save new ones to Supabase
+  if(!OFFLINE&&SB){
+    try{ await SB.from("attendance").delete().eq("session_id",sesId); }catch(e){console.error(e);}
+  }
+  DB.attend=arr.filter(r=>!(r.sessionId===sesId&&r.kind===kind));
+  await bulkSaveAttend(newRecords);
   closeM("m-attend");
   toast(`Saved — ${presentCount} present · ${absentCount} absent · ${excusedCount} excused`,"ok");
   renderAttendance();
