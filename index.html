@@ -22,6 +22,18 @@
   --sh:0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.04);
   --shm:0 4px 16px rgba(0,0,0,.09),0 2px 6px rgba(0,0,0,.04);
 }
+/* DARK MODE */
+body.dark{
+  --bg:#0F172A;--surf:#1E293B;--surf2:#263346;--bdr:#334155;--blt:#2D3F55;
+  --tx:#F1F5F9;--tx2:#94A3B8;--tx3:#64748B;
+  --gll:#052E16;--gl:#052E16;
+  --bll:#1E3A5F;--pul:#2D1B69;--aml:#431407;--rdl:#450A0A;--tll:#042F2E;--rol:#4C0519;--sll:#1E293B;
+  --sh:0 1px 3px rgba(0,0,0,.3),0 1px 2px rgba(0,0,0,.2);
+  --shm:0 4px 16px rgba(0,0,0,.4),0 2px 6px rgba(0,0,0,.3);
+}
+/* Theme toggle button */
+.theme-btn{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;background:none;border:1px solid var(--blt);cursor:pointer;font-size:15px;transition:background .15s;flex-shrink:0;}
+.theme-btn:hover{background:var(--surf2);}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;font-size:14px;}
 .app{min-height:100vh;}
@@ -346,6 +358,7 @@ tbody tr:last-child td{border-bottom:none;}
     <button class="btn btn-s btn-sm" onclick="openM('m-post')">+ Posting</button>
     <button class="btn btn-s btn-sm" onclick="openM('m-leave')">+ Leave</button>
     <button class="btn btn-p btn-sm" onclick="openAct()">+ Activity</button>
+    <button class="theme-btn" id="theme-btn" onclick="toggleTheme()" title="Toggle dark/light mode">🌙</button>
   </div>
 </div>
 
@@ -554,29 +567,28 @@ tbody tr:last-child td{border-bottom:none;}
   </div>
 
   <!-- Leaderboard -->
-  <div class="card" style="margin-bottom:14px;">
-    <div class="card-hd">
-      <h3>Performance leaderboard</h3>
-      <span style="font-size:11.5px;color:var(--tx3);">Click a doctor's name to view their performance card</span>
+  <div id="st-lb-wrap" style="margin-bottom:14px;">
+    <div class="card">
+      <div class="card-hd">
+        <h3>Performance leaderboard</h3>
+        <span style="font-size:11.5px;color:var(--tx3);">Click a doctor's name to view their performance card</span>
+      </div>
+      <div class="tw"><table>
+        <thead><tr>
+          <th>Rank</th><th>Doctor</th><th>Designation</th>
+          <th title="Reports signed (target ≥6)">Sign-offs</th>
+          <th title="Journal & Case presentations (target ≥1)">Journal/Case</th>
+          <th title="Seminar presentations (target ≥1)">Seminar</th>
+          <th title="Publications (target ≥1)">Publications</th>
+          <th title="Research projects (target ≥1)">Research</th>
+          <th title="Sessions attended / total (no score)">Attendance</th>
+          <th>Targets met</th>
+          <th>Score /100</th>
+        </tr></thead>
+        <tbody id="st-lb"></tbody>
+      </table></div>
     </div>
-    <div class="tw"><table>
-      <thead><tr>
-        <th>Rank</th><th>Doctor</th><th>Designation</th>
-        <th title="Reports signed (target ≥6)">Sign-offs</th>
-        <th title="Journal & Case presentations (target ≥1)">Journal/Case</th>
-        <th title="Seminar presentations (target ≥1)">Seminar</th>
-        <th title="Publications (target ≥1)">Publications</th>
-        <th title="Research projects (target ≥1)">Research</th>
-        <th title="Sessions attended / total (no score)">Attendance</th>
-        <th>Targets met</th>
-        <th>Score /100</th>
-      </tr></thead>
-      <tbody id="st-lb"></tbody>
-    </table></div>
   </div>
-
-  <!-- Inline expandable doctor card (shown on name click) -->
-  <div id="st-card-panel" style="display:none;margin-bottom:14px;"></div>
 </div>
 
 <!-- IMPORT -->
@@ -1069,6 +1081,8 @@ tbody tr:last-child td{border-bottom:none;}
 <datalist id="dl-d"></datalist>
 <datalist id="dl-s"></datalist>
 <div class="toasts" id="toasts"></div>
+<!-- Floating doctor card — position:fixed so it works from any page position -->
+<div id="st-card-panel" style="display:none;position:fixed;z-index:300;width:300px;"></div>
 
 <script>
 // ══════════════════════════════════════════
@@ -1273,6 +1287,24 @@ function actBadge(st){
   return m[st]||"b-gy";
 }
 const dot=(on,color)=>`<span class="dot ${color||( on?"dg":"dr")}"></span>`;
+
+// ══════════════════════════════════════════
+// DARK / LIGHT THEME
+// ══════════════════════════════════════════
+function toggleTheme(){
+  const dark=document.body.classList.toggle("dark");
+  localStorage.setItem("phc_theme", dark?"dark":"light");
+  document.getElementById("theme-btn").textContent=dark?"☀️":"🌙";
+}
+function initTheme(){
+  const saved=localStorage.getItem("phc_theme");
+  const prefersDark=window.matchMedia("(prefers-color-scheme: dark)").matches;
+  if(saved==="dark"||(saved===null&&prefersDark)){
+    document.body.classList.add("dark");
+    const btn=document.getElementById("theme-btn");
+    if(btn)btn.textContent="☀️";
+  }
+}
 
 // ══════════════════════════════════════════
 // SIDEBAR TOGGLE
@@ -2197,11 +2229,11 @@ function renderStats(){
   const T=TARGETS;
 
   document.getElementById("st-mc").innerHTML=`
-    <div class="mc dk"><div class="mc-lb">Doctors tracked</div><div class="mc-v">${stats.length}</div><div class="mc-s">${yr==="all"?"All years":yr}</div></div>
+    <div class="mc dk" onclick="document.getElementById('st-lb-wrap').scrollIntoView({behavior:'smooth',block:'start'})" title="Click to view leaderboard"><div class="mc-lb">Doctors tracked</div><div class="mc-v">${stats.length}</div><div class="mc-s">${yr==="all"?"All years":yr}</div></div>
     <div class="mc"><div class="mc-lb">Avg. performance score</div><div class="mc-v">${avgScore}<span style="font-size:14px;font-weight:400;">/100</span></div><div class="mc-s">vs targets (5 domains)</div></div>
-    <div class="mc"><div class="mc-lb">Reports signed</div><div class="mc-v">${signed}<span style="font-size:13px;font-weight:400;">/${posts.length}</span></div><div class="mc-s">Target: ≥${T.signedReports}/doctor/yr</div></div>
+    <div class="mc" onclick="navTo('roster',{rrs:'completed'})" title="Click to view signed postings"><div class="mc-lb">Reports signed</div><div class="mc-v">${signed}<span style="font-size:13px;font-weight:400;">/${posts.length}</span></div><div class="mc-s">Target: ≥${T.signedReports}/doctor/yr</div></div>
     <div class="mc"><div class="mc-lb">All targets met</div><div class="mc-v">${allTargetsMet}</div><div class="mc-s">of ${stats.length} doctors</div></div>
-    <div class="mc"><div class="mc-lb">Top performer</div><div class="mc-v" style="font-size:15px;">${topDoc?.doc||"—"}</div><div class="mc-s">Score: ${topDoc?.score||0}/100</div></div>
+    <div class="mc" onclick="showDocCard('${topDoc?.doc||""}',this,event)" title="Click to view top performer card"><div class="mc-lb">Top performer</div><div class="mc-v" style="font-size:15px;">${topDoc?.doc||"—"}</div><div class="mc-s">Score: ${topDoc?.score||0}/100</div></div>
   `;
 
   // Target summary banner
@@ -2322,7 +2354,7 @@ function renderStats(){
       :`<td style="text-align:center;color:var(--tx3);font-size:12px;">—</td>`;
     return`<tr>
       <td><span class="rank-badge ${rankClass}">${i+1}</span></td>
-      <td><button class="btn-link" onclick="showDocCard('${s.doc}')" style="font-weight:600;background:none;border:none;cursor:pointer;color:var(--tx);text-decoration:underline;text-underline-offset:3px;font-size:13px;font-family:inherit;padding:0;">${s.doc}</button></td>
+      <td><button class="btn-link" onclick="showDocCard('${s.doc}',this,event)" style="font-weight:600;background:none;border:none;cursor:pointer;color:var(--tx);text-decoration:underline;text-underline-offset:3px;font-size:13px;font-family:inherit;padding:0;">${s.doc}</button></td>
       <td><span class="badge ${desigBadgeLb[s.desig]||"b-gy"}">${s.desig||"R"}</span></td>
       ${tCell(s.metSign,s.signed,T.signedReports)}
       ${tCell(s.metJourn,s.jDone,T.journalPresentations)}
@@ -2339,69 +2371,100 @@ function renderStats(){
   window._lastStats=stats;
 }
 
-function showDocCard(docName){
+function showDocCard(docName, triggerEl, event){
+  if(event)event.stopPropagation();
   const stats=window._lastStats||[];
   const s=stats.find(x=>x.doc===docName);
   const panel=document.getElementById("st-card-panel");
-  if(!s||!panel)return;
+  if(!panel)return;
   // Toggle off if same doctor clicked again
   if(panel.dataset.doc===docName&&panel.style.display!=="none"){
     panel.style.display="none";panel.dataset.doc="";return;
   }
+  if(!s){panel.style.display="none";return;}
   panel.dataset.doc=docName;
   const T=TARGETS;
   const desigBadgeLb={SR:"b-bl",R:"b-pu",MO:"b-tl",PMO:"b-am"};
   const scoreColor=s.score>=80?"#166534":s.score>=50?"#D97706":"#DC2626";
   const r=22,circ=2*Math.PI*r,dash=(circ*(s.score/100)).toFixed(1),gap=circ.toFixed(1),off=(circ/4).toFixed(1);
   const domains=[
-    {lb:"Sign-offs",val:s.signed,tgt:T.signedReports,met:s.metSign,col:"#1E3A8A"},
-    {lb:"Journal/Case",val:s.jDone,tgt:T.journalPresentations,met:s.metJourn,col:"#4C1D95"},
-    {lb:"Seminar",val:s.sDone,tgt:T.seminarPresentations,met:s.metSemin,col:"#134E4A"},
-    {lb:"Publication",val:s.pubs,tgt:T.publications,met:s.metPub,col:"#78350F"},
-    {lb:"Research",val:s.researchProjects,tgt:T.researchProjects,met:s.metRes,col:"#881337"},
+    {lb:"Sign-offs",val:s.signed,tgt:T.signedReports,met:s.metSign},
+    {lb:"Journal/Case",val:s.jDone,tgt:T.journalPresentations,met:s.metJourn},
+    {lb:"Seminar",val:s.sDone,tgt:T.seminarPresentations,met:s.metSemin},
+    {lb:"Publication",val:s.pubs,tgt:T.publications,met:s.metPub},
+    {lb:"Research",val:s.researchProjects,tgt:T.researchProjects,met:s.metRes},
   ];
   const atBlock=s.atTotal>0
-    ?`<div style="margin-top:12px;padding:10px 12px;background:var(--bg);border-radius:8px;display:flex;align-items:center;gap:12px;">
-        <span style="font-size:11px;font-weight:600;color:var(--tx2);min-width:78px;">Attendance</span>
-        <div style="flex:1;background:var(--surf2);border-radius:3px;height:6px;overflow:hidden;">
-          <div style="width:${s.atRate}%;height:100%;background:${s.atRate>=80?"#166534":s.atRate>=50?"#D97706":"#DC2626"};border-radius:3px;transition:width .4s;"></div>
+    ?`<div style="margin-top:10px;padding:8px 10px;background:var(--bg);border-radius:8px;display:flex;align-items:center;gap:8px;">
+        <span style="font-size:10.5px;font-weight:600;color:var(--tx2);min-width:70px;">Attendance</span>
+        <div style="flex:1;background:var(--surf2);border-radius:3px;height:5px;overflow:hidden;">
+          <div style="width:${s.atRate}%;height:100%;background:${s.atRate>=80?"#166534":s.atRate>=50?"#D97706":"#DC2626"};border-radius:3px;"></div>
         </div>
-        <span style="font-size:12px;font-weight:700;min-width:44px;text-align:right;color:${s.atRate>=80?"#166534":s.atRate>=50?"#D97706":"#DC2626"};">${s.atRate}%</span>
-        <span style="font-size:11px;color:var(--tx3);">${s.atPresent}/${s.atTotal} sessions</span>
+        <span style="font-size:11px;font-weight:700;color:${s.atRate>=80?"#166534":s.atRate>=50?"#D97706":"#DC2626"};">${s.atRate}%</span>
+        <span style="font-size:10px;color:var(--tx3);">${s.atPresent}/${s.atTotal}</span>
       </div>`
-    :`<div style="margin-top:12px;padding:8px 12px;background:var(--bg);border-radius:8px;font-size:12px;color:var(--tx3);">No attendance records yet</div>`;
-  panel.innerHTML=`<div class="doc-card" style="border:2px solid var(--gm);position:relative;">
-    <button onclick="document.getElementById('st-card-panel').style.display='none'" style="position:absolute;top:12px;right:12px;background:none;border:none;font-size:18px;cursor:pointer;color:var(--tx3);line-height:1;">×</button>
-    <div class="doc-card-top">
-      <svg class="score-ring" viewBox="0 0 56 56">
-        <circle cx="28" cy="28" r="${r}" stroke="#EAE7E0" stroke-width="5" fill="none"/>
-        <circle cx="28" cy="28" r="${r}" stroke="${scoreColor}" stroke-width="5" fill="none"
-          stroke-dasharray="${dash} ${gap}" stroke-dashoffset="${off}" transform="rotate(-90 28 28)"/>
-        <text x="28" y="31" text-anchor="middle" font-size="12" font-weight="700" fill="${scoreColor}" font-family="DM Sans,sans-serif">${s.score}</text>
-      </svg>
-      <div style="flex:1;min-width:0;">
-        <div class="doc-name">${s.doc} <span class="badge ${desigBadgeLb[s.desig]||"b-gy"}" style="font-size:10px;padding:1px 6px;vertical-align:middle;">${s.desig||"R"}</span></div>
-        <div class="doc-role">${s.dp.length} postings · ${s.totalActs} activities · ${s.targetsMet}/5 targets met</div>
+    :`<div style="margin-top:10px;font-size:11px;color:var(--tx3);padding:6px 0;">No attendance records</div>`;
+
+  panel.innerHTML=`<div class="doc-card" style="border:2px solid var(--gm);box-shadow:var(--shm);">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <svg class="score-ring" viewBox="0 0 56 56">
+          <circle cx="28" cy="28" r="${r}" stroke="var(--surf2)" stroke-width="5" fill="none"/>
+          <circle cx="28" cy="28" r="${r}" stroke="${scoreColor}" stroke-width="5" fill="none"
+            stroke-dasharray="${dash} ${gap}" stroke-dashoffset="${off}" transform="rotate(-90 28 28)"/>
+          <text x="28" y="31" text-anchor="middle" font-size="12" font-weight="700" fill="${scoreColor}" font-family="DM Sans,sans-serif">${s.score}</text>
+        </svg>
+        <div>
+          <div class="doc-name" style="font-size:13px;">${s.doc} <span class="badge ${desigBadgeLb[s.desig]||"b-gy"}" style="font-size:9px;">${s.desig||"R"}</span></div>
+          <div class="doc-role">${s.dp.length} postings · ${s.totalActs} activities</div>
+        </div>
       </div>
-      <span class="badge ${s.targetsMet===5?"b-gn":s.targetsMet>=3?"b-am":"b-rd"}" style="align-self:flex-start;">${s.targetsMet}/5</span>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <span class="badge ${s.targetsMet===5?"b-gn":s.targetsMet>=3?"b-am":"b-rd"}">${s.targetsMet}/5</span>
+        <button onclick="document.getElementById('st-card-panel').style.display='none';document.getElementById('st-card-panel').dataset.doc=''" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--tx3);line-height:1;padding:0;">×</button>
+      </div>
     </div>
-    <div style="display:flex;flex-direction:column;gap:6px;">
+    <div style="display:flex;flex-direction:column;gap:5px;">
       ${domains.map(d=>{
-        const pct=Math.min(100,Math.round((d.val/d.tgt)*100));
-        return`<div style="display:flex;align-items:center;gap:8px;">
-          <span style="font-size:10.5px;font-weight:500;min-width:84px;color:var(--tx2);">${d.lb}</span>
-          <div style="flex:1;background:var(--surf2);border-radius:3px;height:6px;overflow:hidden;">
-            <div style="width:${pct}%;height:100%;background:${d.met?"#166534":d.val>0?"#D97706":"#EAE7E0"};border-radius:3px;transition:width .4s;"></div>
+        const pct=Math.min(100,d.tgt>0?Math.round((d.val/d.tgt)*100):0);
+        return`<div style="display:flex;align-items:center;gap:6px;">
+          <span style="font-size:10px;font-weight:500;min-width:76px;color:var(--tx2);">${d.lb}</span>
+          <div style="flex:1;background:var(--surf2);border-radius:3px;height:5px;overflow:hidden;">
+            <div style="width:${pct}%;height:100%;background:${d.met?"#166534":d.val>0?"#D97706":"var(--surf2)"};border-radius:3px;"></div>
           </div>
-          <span style="font-size:11px;font-weight:600;min-width:36px;text-align:right;color:${d.met?"#166534":d.val>0?"#D97706":"#9CA3AF"};">${d.val}/${d.tgt}</span>
-          <span style="font-size:13px;">${d.met?"✅":"❌"}</span>
+          <span style="font-size:10px;font-weight:600;min-width:28px;text-align:right;color:${d.met?"#166534":d.val>0?"#D97706":"#9CA3AF"};">${d.val}/${d.tgt}</span>
+          <span style="font-size:12px;">${d.met?"✅":"❌"}</span>
         </div>`;
       }).join("")}
     </div>
     ${atBlock}
   </div>`;
+
+  // Position: show temporarily to measure, then place beside the row
   panel.style.display="block";
-  panel.scrollIntoView({behavior:"smooth",block:"nearest"});
+  panel.style.top="0px";
+  panel.style.left="0px";
+
+  const panelH=panel.offsetHeight;
+  const panelW=panel.offsetWidth;
+  const vw=window.innerWidth;
+  const vh=window.innerHeight;
+
+  // Get position of the trigger element (the clicked button)
+  const rect=triggerEl?triggerEl.getBoundingClientRect():{top:vh/2,right:vw/2,left:vw/2,bottom:vh/2};
+
+  // Prefer right of the table; fall back to left if no space
+  let left=rect.right+10;
+  if(left+panelW>vw-10) left=rect.left-panelW-10;
+  if(left<10) left=10;
+
+  // Vertically centre on the row, clamp to viewport
+  let top=rect.top+(rect.height/2)-(panelH/2);
+  if(top+panelH>vh-10) top=vh-panelH-10;
+  if(top<60) top=60;
+
+  panel.style.top=top+"px";
+  panel.style.left=left+"px";
 }
 
 function xStatsCSV(){
@@ -2732,10 +2795,25 @@ function toast(msg,type="ok"){
   w.appendChild(el);setTimeout(()=>el.remove(),3000);
 }
 
+// Close floating card on outside click (stopPropagation in showDocCard prevents immediate close)
+document.addEventListener("click",function(e){
+  const panel=document.getElementById("st-card-panel");
+  if(!panel||panel.style.display==="none")return;
+  if(!panel.contains(e.target)&&!e.target.closest(".btn-link")){
+    panel.style.display="none";panel.dataset.doc="";
+  }
+});
+// Close floating card when the page scrolls
+document.querySelector(".cnt")?.addEventListener("scroll",function(){
+  const panel=document.getElementById("st-card-panel");
+  if(panel&&panel.style.display!=="none"){panel.style.display="none";panel.dataset.doc="";}
+},true);
+
 // ══════════════════════════════════════════
 // BOOT — called after data is loaded
 // ══════════════════════════════════════════
 function bootApp(){
+  initTheme();
   initSel();
   renderDB();
   togActF();
